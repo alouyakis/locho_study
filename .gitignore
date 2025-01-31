@@ -1,3 +1,14 @@
+## sequences
+.DS_Store
+filtered
+sortmerna
+nohost
+trinity_out
+alignments/*
+annotations/*
+!annotations/filter_blastx.fmt6
+!annotations/filter_blastp.fmt6
+
 # History files
 .Rhistory
 .Rapp.history
