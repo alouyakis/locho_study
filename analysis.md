@@ -18,6 +18,7 @@ conda activate mtenv
 
 ## create output dirs and variables
 rawseqs="/data/Microbiome/NextSeq2000/250115_VH00394_26_2225LTJNX/Analysis/1/Data/fastq"
+export data="data"
 mkdir -p quality && export quality="quality"
 mkdir -p filtered && export filtseqs="filtered"
 mkdir -p sortmerna && export sortmerna="sortmerna"
@@ -111,15 +112,26 @@ zgrep -c "^+$" ${sortmerna}/rrna_*rev*.fq.gz > ${tables}/rrna_paired_rev.csv
 
 create trinity input file:
 ```bash
-paste -d '\t' \
-  $()
-  $(awk -F":" '{print $1}' tables/filt_paired_fwd.csv) \
-  $(awk -F":" '{print $1}' tables/filt_paired_fwd.csv) > output.txt
+## filter sample data by sample ids
+awk -F":" '{print $1}' ${tables}/filt_paired_fwd.csv | sed 's/filtered\///g;s/_trimmed-pair_R1.fastq.gz//g' > ${data}/sampleids.tmp
+grep -Ff data/sampleids.tmp ${data}/locho_105536_sample_data.tsv > ${data}/filtered_locho_105536_sample_data.tsv
 
-cond_A    cond_A_rep1    A_rep1_left.fq    A_rep1_right.fq
+## create temp files for each column
+awk -F"\t" '{OFS="\t"}{print $4,$28,$29}' ${data}/filtered_locho_105536_sample_data.tsv | sort | sed 's/Pre-Feed\t/prefeed_/g;s/Treatment (test)\t/treatment_/g' | awk -F"\t" '{print $2}' > ${data}/col1.tmp
+awk -F"\t" '{OFS="\t"}{print $4,$28,$29}' ${data}/filtered_locho_105536_sample_data.tsv | sort | sed 's/Pre-Feed\t/prefeed_/g;s/Treatment (test)\t/treatment_/g' | awk -F"\t" '{split($2, arr, "_"); key = arr[1]"_"arr[2]; count[key]++; print $1"\t"$2"_"count[key]}' | sort | awk -F"\t" '{print $2}' > ${data}/col2.tmp
+awk -F":" '{print $1}' ${tables}/mrna_paired_fwd.csv | sort > ${data}/col3.tmp
+awk -F":" '{print $1}' ${tables}/mrna_paired_rev.csv | sort > ${data}/col4.tmp
+## paste together
+paste -d '\t' ${data}/col1.tmp ${data}/col2.tmp ${data}/col3.tmp ${data}/col4.tmp > ${data}/trinity_input.txt
 
+## remove tmp files
+rm ${data}/*.tmp
 ```
 
+TODO: write script to generate fwd/rev seq lists for trinity inputs
+```bash
+## todo
+```
 
 
 
