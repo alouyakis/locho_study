@@ -30,7 +30,6 @@ export trinity_out="trinity_out"
 
 export rrna_db="/data/databases/sortmerna/data/rRNA_databases"
 export dog="/data/databases/kneaddata_2023/dog/canFam4"
-export cat="/data/databases/kneaddata_2023/cat/fca126"
 export uniprot="/data/databases/uniprot"
 export pfam="/data/databases/pfam"
 
@@ -69,6 +68,22 @@ parallel -j 10 \
     --threads 5 -m 5000 ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
 ```
 
+remove host from mRNA:  
+```bash
+## align to dog DONE
+parallel -j 10 \
+  'bowtie2 -p 5 -x ${dog} \
+    -1 ${sortmerna}/mrna_{1}_fwd.fq.gz \
+    -2 ${sortmerna}/mrna_{1}_rev.fq.gz \
+    -S ${nohost}/mrna_{1}_mapped_and_unmapped_dog.sam;
+  samtools view -@ 5 -bS ${nohost}/mrna_{1}_mapped_and_unmapped_dog.sam > ${nohost}/mrna_{1}_mapped_and_unmapped_dog.bam;
+  samtools view -@ 5 -b -f 12 -F 256 ${nohost}/mrna_{1}_mapped_and_unmapped_dog.bam > ${nohost}/mrna_{1}_unmapped_dog.bam;
+  samtools sort -n ${nohost}/mrna_{1}_unmapped_dog.bam > ${nohost}/mrna_{1}_unmapped_sorted_dog.bam;
+  bedtools bamtofastq -i ${nohost}/mrna_{1}_unmapped_sorted_dog.bam \
+    -fq ${nohost}/mrna_{1}_rmhost_dog_r1.fq \
+    -fq2 ${nohost}/mrna_{1}_rmhost_dog_r2.fq' ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
+```
+
 sequence counts:
 ```bash
 ## raw counts
@@ -85,13 +100,25 @@ zgrep -c "^+$" ${filtseqs}/*single_R1*.fastq.gz > ${tables}/filt_singles_fwd.csv
 zgrep -c "^+$" ${filtseqs}/*single_R2*.fastq.gz > ${tables}/filt_singles_rev.csv
 
 ## rrna vs mrna counts
-
+zgrep -c "^+$" ${sortmerna}/mrna_*fwd*.fq.gz > ${tables}/mrna_paired_fwd.csv
+zgrep -c "^+$" ${sortmerna}/mrna_*rev*.fq.gz > ${tables}/mrna_paired_rev.csv
+zgrep -c "^+$" ${sortmerna}/rrna_*fwd*.fq.gz > ${tables}/rrna_paired_fwd.csv
+zgrep -c "^+$" ${sortmerna}/rrna_*rev*.fq.gz > ${tables}/rrna_paired_rev.csv
 
 ## mrna with host removed counts
 
 ```
 
+create trinity input file:
+```bash
+paste -d '\t' \
+  $()
+  $(awk -F":" '{print $1}' tables/filt_paired_fwd.csv) \
+  $(awk -F":" '{print $1}' tables/filt_paired_fwd.csv) > output.txt
 
+cond_A    cond_A_rep1    A_rep1_left.fq    A_rep1_right.fq
+
+```
 
 
 
