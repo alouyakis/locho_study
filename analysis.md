@@ -49,7 +49,47 @@ parallel -j 10 \
     ILLUMINACLIP:TruSeq3-PE.fa:2:30:10:2:True LEADING:3 TRAILING:3 MINLEN:36 ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
 ```
 
+remove rRNA from trimmed reads:
+```bash
+parallel -j 10 \
+  sortmerna --ref ${rrna_db}/rfam-5.8s-database-id98.fasta \
+    --ref ${rrna_db}/rfam-5s-database-id98.fasta \
+    --ref ${rrna_db}/silva-arc-16s-id95.fasta \
+    --ref ${rrna_db}/silva-arc-23s-id98.fasta \
+    --ref ${rrna_db}/silva-bac-16s-id90.fasta \
+    --ref ${rrna_db}/silva-bac-23s-id98.fasta \
+    --ref ${rrna_db}/silva-euk-18s-id95.fasta \
+    --ref ${rrna_db}/silva-euk-28s-id98.fasta \
+    --reads ${filtseqs}/{1}_trimmed-pair_R1.fastq.gz \
+    --reads ${filtseqs}/{1}_trimmed-pair_R2.fastq.gz \
+    --aligned ${sortmerna}/rrna_{1} \
+    --other ${sortmerna}/mrna_{1} --out2 \
+    --paired_in --fastx --num_alignments 1 \
+    --workdir ${sortmerna}/{1}_wd \
+    --threads 5 -m 5000 ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
+```
 
+sequence counts:
+```bash
+## raw counts
+## QC - counts should match:
+zgrep -c "^+$" ${rawseqs}/*R1*.fastq.gz > ${tables}/raw_fwd.csv
+zgrep -c "^+$" ${rawseqs}/*R2*.fastq.gz > ${tables}/raw_rev.csv
+
+## filtered counts
+## QC - counts should match:
+zgrep -c "^+$" ${filtseqs}/*pair_R1*.fastq.gz > ${tables}/filt_paired_fwd.csv
+zgrep -c "^+$" ${filtseqs}/*pair_R2*.fastq.gz > ${tables}/filt_paired_rev.csv
+## singleton counts:
+zgrep -c "^+$" ${filtseqs}/*single_R1*.fastq.gz > ${tables}/filt_singles_fwd.csv
+zgrep -c "^+$" ${filtseqs}/*single_R2*.fastq.gz > ${tables}/filt_singles_rev.csv
+
+## rrna vs mrna counts
+
+
+## mrna with host removed counts
+
+```
 
 
 
