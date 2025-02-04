@@ -39,6 +39,42 @@ sudo mv ${rawseqs}/Undetermined_S0_R1_001.fastq.gz ${rawseqs}/Undetermined_S0_R1
 sudo mv ${rawseqs}/Undetermined_S0_R2_001.fastq.gz ${rawseqs}/Undetermined_S0_R2_001.fastq.gz.ignore
 ```
 
+sequence counts:
+```bash
+## raw counts
+## QC - counts should match:
+zgrep -c "^+$" ${rawseqs}/*R1*.fastq.gz > ${tables}/raw_fwd.csv
+zgrep -c "^+$" ${rawseqs}/*R2*.fastq.gz > ${tables}/raw_rev.csv
+
+## filtered counts
+## QC - counts should match:
+zgrep -c "^+$" ${filtseqs}/*pair_R1*.fastq.gz > ${tables}/filt_paired_fwd.csv
+zgrep -c "^+$" ${filtseqs}/*pair_R2*.fastq.gz > ${tables}/filt_paired_rev.csv
+## singleton counts:
+zgrep -c "^+$" ${filtseqs}/*single_R1*.fastq.gz > ${tables}/filt_singles_fwd.csv
+zgrep -c "^+$" ${filtseqs}/*single_R2*.fastq.gz > ${tables}/filt_singles_rev.csv
+
+## rrna vs mrna counts
+zgrep -c "^+$" ${sortmerna}/mrna_*fwd*.fq.gz > ${tables}/mrna_paired_fwd.csv
+zgrep -c "^+$" ${sortmerna}/mrna_*rev*.fq.gz > ${tables}/mrna_paired_rev.csv
+zgrep -c "^+$" ${sortmerna}/rrna_*fwd*.fq.gz > ${tables}/rrna_paired_fwd.csv
+zgrep -c "^+$" ${sortmerna}/rrna_*rev*.fq.gz > ${tables}/rrna_paired_rev.csv
+
+## mrna with host removed counts
+grep -c "^+$" ${nohost}/mrna_*_rmhost_dog_r1.fq > ${tables}/mrna_nohost_fwd.csv
+grep -c "^+$" ${nohost}/mrna_*_rmhost_dog_r2.fq > ${tables}/mrna_nohost_rev.csv
+```
+
+quality check:
+```bash
+## fastqc
+parallel -j 10 \
+  fastqc ${rawseqs}/{1}*R1*.fastq.gz ${rawseqs}/{1}*R2*.fastq.gz \
+    -o ${quality} -t 5 ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
+
+## TODO - try RSeQC https://rseqc.sourceforge.net/
+```
+
 quality trim:
 ```bash
 parallel -j 10 \
@@ -83,74 +119,14 @@ parallel -j 10 \
   bedtools bamtofastq -i ${nohost}/mrna_{1}_unmapped_sorted_dog.bam \
     -fq ${nohost}/mrna_{1}_rmhost_dog_r1.fq \
     -fq2 ${nohost}/mrna_{1}_rmhost_dog_r2.fq' ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
+
+## cleanup - may just delete
+gzip ${nohost}/*.sam
+gzip ${nohost}/*.bam
 ```
-
-sequence counts:
-```bash
-## raw counts
-## QC - counts should match:
-zgrep -c "^+$" ${rawseqs}/*R1*.fastq.gz > ${tables}/raw_fwd.csv
-zgrep -c "^+$" ${rawseqs}/*R2*.fastq.gz > ${tables}/raw_rev.csv
-
-## filtered counts
-## QC - counts should match:
-zgrep -c "^+$" ${filtseqs}/*pair_R1*.fastq.gz > ${tables}/filt_paired_fwd.csv
-zgrep -c "^+$" ${filtseqs}/*pair_R2*.fastq.gz > ${tables}/filt_paired_rev.csv
-## singleton counts:
-zgrep -c "^+$" ${filtseqs}/*single_R1*.fastq.gz > ${tables}/filt_singles_fwd.csv
-zgrep -c "^+$" ${filtseqs}/*single_R2*.fastq.gz > ${tables}/filt_singles_rev.csv
-
-## rrna vs mrna counts
-zgrep -c "^+$" ${sortmerna}/mrna_*fwd*.fq.gz > ${tables}/mrna_paired_fwd.csv
-zgrep -c "^+$" ${sortmerna}/mrna_*rev*.fq.gz > ${tables}/mrna_paired_rev.csv
-zgrep -c "^+$" ${sortmerna}/rrna_*fwd*.fq.gz > ${tables}/rrna_paired_fwd.csv
-zgrep -c "^+$" ${sortmerna}/rrna_*rev*.fq.gz > ${tables}/rrna_paired_rev.csv
-
-## mrna with host removed counts
-grep -c "^+$" ${nohost}/mrna_*_rmhost_dog_r1.fq > ${tables}/mrna_nohost_fwd.csv
-grep -c "^+$" ${nohost}/mrna_*_rmhost_dog_r2.fq > ${tables}/mrna_nohost_rev.csv
-```
-
-quality check:
-```bash
-## fastqc
-parallel -j 10 \
-  fastqc ${rawseqs}/{1}*R1*.fastq.gz ${rawseqs}/{1}*R2*.fastq.gz \
-    -o ${quality} -t 5 ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
-
-## TODO - try RSeQC https://rseqc.sourceforge.net/
-```
-
 
 ### two methods for running trinity - create input file or dynamically create command from input directory
-method 1 - create trinity input file:
-```bash
-## filter sample data by sample ids
-awk -F":" '{print $1}' ${tables}/filt_paired_fwd.csv | sed 's/filtered\///g;s/_trimmed-pair_R1.fastq.gz//g' > ${data}/sampleids.tmp
-grep -Ff data/sampleids.tmp ${data}/locho_105536_sample_data.tsv > ${data}/filtered_locho_105536_sample_data.tsv
-
-## create temp files for each column
-awk -F"\t" '{OFS="\t"}{print $4,$28,$29}' ${data}/filtered_locho_105536_sample_data.tsv | sort | sed 's/Pre-Feed\t/prefeed_/g;s/Treatment (test)\t/treatment_/g' | awk -F"\t" '{print $2}' > ${data}/col1.tmp
-awk -F"\t" '{OFS="\t"}{print $4,$28,$29}' ${data}/filtered_locho_105536_sample_data.tsv | sort | sed 's/Pre-Feed\t/prefeed_/g;s/Treatment (test)\t/treatment_/g' | awk -F"\t" '{split($2, arr, "_"); key = arr[1]"_"arr[2]; count[key]++; print $1"\t"$2"_"count[key]}' | sort | awk -F"\t" '{print $2}' > ${data}/col2.tmp
-awk -F":" '{print $1}' ${tables}/mrna_paired_fwd.csv | sort > ${data}/col3.tmp
-awk -F":" '{print $1}' ${tables}/mrna_paired_rev.csv | sort > ${data}/col4.tmp
-## paste together
-paste -d '\t' ${data}/col1.tmp ${data}/col2.tmp ${data}/col3.tmp ${data}/col4.tmp > ${data}/trinity_input.txt
-
-## remove tmp files
-rm ${data}/*.tmp
-
-## run trinity
-Trinity \
-  --seqType fq \
-  --max_memory 300G \
-  --normalize_reads \
-  --CPU 75 \
-  --output ${trinity_out} \
-  --samples_file ${data}/trinity_input.txt
-```
-
-method 2 - generate command with fwd/rev seq lists for trinity inputs:
+method 1 - generate command with fwd/rev seq lists for trinity inputs:
 ```bash
 ## create command variables
 cmd1="Trinity \
@@ -186,6 +162,52 @@ cmd="$cmd1 $cmd2"
 eval $cmd
 ```
 
+method 2 - create trinity input file:
+this method is less reproducible
+```bash
+## filter sample data by sample ids
+awk -F":" '{print $1}' ${tables}/filt_paired_fwd.csv | sed 's/filtered\///g;s/_trimmed-pair_R1.fastq.gz//g' > ${data}/sampleids.tmp
+grep -Ff data/sampleids.tmp ${data}/locho_105536_sample_data.tsv > ${data}/filtered_locho_105536_sample_data.tsv
+
+## create temp files for each column
+awk -F"\t" '{OFS="\t"}{print $4,$28,$29}' ${data}/filtered_locho_105536_sample_data.tsv | sort | sed 's/Pre-Feed\t/prefeed_/g;s/Treatment (test)\t/treatment_/g' | awk -F"\t" '{print $2}' > ${data}/col1.tmp
+awk -F"\t" '{OFS="\t"}{print $4,$28,$29}' ${data}/filtered_locho_105536_sample_data.tsv | sort | sed 's/Pre-Feed\t/prefeed_/g;s/Treatment (test)\t/treatment_/g' | awk -F"\t" '{split($2, arr, "_"); key = arr[1]"_"arr[2]; count[key]++; print $1"\t"$2"_"count[key]}' | sort | awk -F"\t" '{print $2}' > ${data}/col2.tmp
+awk -F":" '{print $1}' ${tables}/mrna_paired_fwd.csv | sort > ${data}/col3.tmp
+awk -F":" '{print $1}' ${tables}/mrna_paired_rev.csv | sort > ${data}/col4.tmp
+## paste together
+paste -d '\t' ${data}/col1.tmp ${data}/col2.tmp ${data}/col3.tmp ${data}/col4.tmp > ${data}/trinity_input.txt
+
+## remove tmp files
+rm ${data}/*.tmp
+
+## run trinity
+Trinity \
+  --seqType fq \
+  --max_memory 300G \
+  --normalize_reads \
+  --CPU 75 \
+  --output ${trinity_out} \
+  --samples_file ${data}/trinity_input.txt
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 slurm script template:
 ```bash
@@ -212,3 +234,6 @@ SAMPLE=$(basename ${INPUT_PATH})
 echo -e "\nRun ID: ${RUN}"
 echo -e "\nSample: ${SAMPLE}"
 ```
+
+
+END
