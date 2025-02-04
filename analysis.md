@@ -71,7 +71,7 @@ parallel -j 10 \
 
 remove host from mRNA:  
 ```bash
-## align to dog DONE
+## align to dog
 parallel -j 10 \
   'bowtie2 -p 5 -x ${dog} \
     -1 ${sortmerna}/mrna_{1}_fwd.fq.gz \
@@ -107,10 +107,23 @@ zgrep -c "^+$" ${sortmerna}/rrna_*fwd*.fq.gz > ${tables}/rrna_paired_fwd.csv
 zgrep -c "^+$" ${sortmerna}/rrna_*rev*.fq.gz > ${tables}/rrna_paired_rev.csv
 
 ## mrna with host removed counts
-
+grep -c "^+$" ${nohost}/mrna_*_rmhost_dog_r1.fq > ${tables}/mrna_nohost_fwd.csv
+grep -c "^+$" ${nohost}/mrna_*_rmhost_dog_r2.fq > ${tables}/mrna_nohost_rev.csv
 ```
 
-create trinity input file:
+quality check:
+```bash
+## fastqc
+parallel -j 10 \
+  fastqc ${rawseqs}/{1}*R1*.fastq.gz ${rawseqs}/{1}*R2*.fastq.gz \
+    -o ${quality} -t 5 ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
+
+## TODO - try RSeQC https://rseqc.sourceforge.net/
+```
+
+
+### two methods for running trinity - create input file or dynamically create command from input directory
+method 1 - create trinity input file:
 ```bash
 ## filter sample data by sample ids
 awk -F":" '{print $1}' ${tables}/filt_paired_fwd.csv | sed 's/filtered\///g;s/_trimmed-pair_R1.fastq.gz//g' > ${data}/sampleids.tmp
@@ -126,15 +139,52 @@ paste -d '\t' ${data}/col1.tmp ${data}/col2.tmp ${data}/col3.tmp ${data}/col4.tm
 
 ## remove tmp files
 rm ${data}/*.tmp
+
+## run trinity
+Trinity \
+  --seqType fq \
+  --max_memory 300G \
+  --normalize_reads \
+  --CPU 75 \
+  --output ${trinity_out} \
+  --samples_file ${data}/trinity_input.txt
 ```
 
-TODO: write script to generate fwd/rev seq lists for trinity inputs
+method 2 - generate command with fwd/rev seq lists for trinity inputs:
 ```bash
-## todo
+## create command variables
+cmd1="Trinity \
+        --seqType fq \
+        --max_memory 300G \
+        --normalize_reads \
+        --CPU 75 \
+        --output ${trinity_out} \
+        --left"
+
+cmd2="        --right"
+
+## append with sequence file names
+first=true
+for file in $(find "${nohost}" -name "mrna_*_rmhost_dog_r1.fq"); do
+  fwd="${file}"
+  rev="${file/_r1/_r2}"
+
+  if $first; then
+    cmd1+=" ${fwd}"
+    cmd2+=" ${rev}"
+    first=false
+  else
+    cmd1+=",${fwd}"
+    cmd2+=",${rev}"
+  fi
+done
+
+## combine into single command
+cmd="$cmd1 $cmd2"
+
+# execute the command
+eval $cmd
 ```
-
-
-
 
 
 slurm script template:
