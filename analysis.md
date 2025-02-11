@@ -190,8 +190,15 @@ Trinity \
   --samples_file ${data}/trinity_input.txt
 ```
 
+align reads to assembly:
+```
 
+```
 
+annotate assembly:
+```
+
+```
 
 
 
@@ -213,6 +220,7 @@ slurm script template:
 ```bash
 #!/bin/sh
 #SBATCH --job-name=align
+#SBATCH --qos=defq
 #SBATCH --cpus-per-task=10
 #SBATCH --mem=50gb
 #SBATCH -t 100:00:00
