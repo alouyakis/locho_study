@@ -7,6 +7,10 @@ Sample number: 106
 sequence path: /data/Microbiome/NextSeq2000/250115_VH00394_26_2225LTJNX/Analysis/1/Data/fastq
 analysis path: /home/artemisl/locho_study
 
+questions for matt and dayakar about the analysis -
+1. use the metagenomes from the same samples to improve annotating taxa and functions?
+2. will this study include the metabolite data with the unknowns?
+
 set up:
 ```bash
 ## clone git repo
