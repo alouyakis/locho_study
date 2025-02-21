@@ -194,8 +194,23 @@ Trinity \
   --samples_file ${data}/trinity_input.txt
 ```
 
+assembly housekeeping:
+```
+~/.conda/pkgs/trinity-2.8.5-h8b12597_5/bin/get_Trinity_gene_to_trans_map.pl ${trinity_out}/Trinity.fasta > ${trinity_out}/Trinity.fasta.gene_trans_map
+TrinityStats.pl ${trinity_out}/Trinity.fasta > ${tables}/TrinityStats_out.txt
+```
+
+
 align reads to assembly:
 ```
+bowtie2-build ${trinity_out}/Trinity.fasta ${trinity_out}/Trinity.fasta
+parallel -j 10 \
+  'bowtie2 -p 10 -q --no-unal -k 20 -x ${trinity_out}/Trinity.fasta \
+    -1 ${nohost}/mrna_{1}_rmhost_dog_r1.fq \
+    -2 ${nohost}/mrna_{1}_rmhost_dog_r2.fq \
+    2>${tables}/align_stats_{1}.txt | samtools view -@10 -Sb \
+    -o ${alignments}/bowtie2_{1}.bam' ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
+cat 2>&1 ${tables}/align_stats_*.txt | less
 
 ```
 
