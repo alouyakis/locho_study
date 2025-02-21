@@ -200,7 +200,6 @@ assembly housekeeping:
 TrinityStats.pl ${trinity_out}/Trinity.fasta > ${tables}/TrinityStats_out.txt
 ```
 
-
 align reads to assembly:
 ```
 bowtie2-build ${trinity_out}/Trinity.fasta ${trinity_out}/Trinity.fasta
