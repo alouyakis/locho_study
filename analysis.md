@@ -294,6 +294,12 @@ blastx -query ${trinity_out}/Trinity.fasta \
   -num_threads 25 \
   -outfmt 6
 
+### filter for top hit
+mkdir tmp
+sort -T tmp -g -k11,11 ${annotations}/blastx.outfmt6 | sort -T tmp -u -k1,1 > ${annotations}/filter_blastx.fmt6
+rm -r tmp/
+
+## TO DO - ADD GZIP TO LARGE FILES
 ```
 
 
