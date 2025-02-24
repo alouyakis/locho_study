@@ -201,7 +201,7 @@ TrinityStats.pl ${trinity_out}/Trinity.fasta > ${tables}/TrinityStats_out.txt
 ```
 
 align reads to assembly:
-```
+```bash
 bowtie2-build ${trinity_out}/Trinity.fasta ${trinity_out}/Trinity.fasta
 parallel -j 10 \
   'bowtie2 -p 10 -q --no-unal -k 20 -x ${trinity_out}/Trinity.fasta \
@@ -209,7 +209,33 @@ parallel -j 10 \
     -2 ${nohost}/mrna_{1}_rmhost_dog_r2.fq \
     2>${tables}/align_stats_{1}.txt | samtools view -@10 -Sb \
     -o ${alignments}/bowtie2_{1}.bam' ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
+
 cat 2>&1 ${tables}/align_stats_*.txt | less
+```
+
+alignment counts:
+```bash
+## prep reference
+align_and_estimate_abundance.pl \
+  --transcripts ${trinity_out}/Trinity.fasta \
+  --est_method RSEM \
+  --aln_method bowtie2 \
+  --trinity_mode \
+  --output_dir ${trinity_out} \
+  --prep_reference
+
+parallel -j 5 \
+  align_and_estimate_abundance.pl \
+    --transcripts ${trinity_out}/Trinity.fasta \
+    --seqType fq \
+    --left ${nohost}/mrna_{1}_rmhost_dog_r1.fq \
+    --right ${nohost}/mrna_{1}_rmhost_dog_r2.fq \
+    --est_method RSEM \
+    --output_dir ${alignments}/mrna_{1} \
+    --aln_method bowtie2 \
+    --thread_count 10 \
+    --gene_trans_map ${trinity_out}/Trinity.fasta.gene_trans_map \
+    --output_prefix mrna_{1} ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
 
 ```
 
