@@ -237,10 +237,62 @@ parallel -j 5 \
     --gene_trans_map ${trinity_out}/Trinity.fasta.gene_trans_map \
     --output_prefix mrna_{1} ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
 
+## merge into counts table
+module load R/4.4.0
+# base command
+cmd="abundance_estimates_to_matrix.pl \
+      --est_method RSEM \
+      --cross_sample_norm TMM \
+      --out_prefix ${alignments}/iso \
+      --name_sample_by_basedir"
+# find all isoforms.results files in the directory and append them to the command
+for file in $(find "${alignments}" -name "*.isoforms.results"); do
+  cmd+=" $file"
+done
+# execute
+eval $cmd
 ```
 
 annotate assembly:
-```
+```bash
+## identify protein coding regions
+TransDecoder.LongOrfs -t ${trinity_out}/Trinity.fasta \
+  --output_dir ${transdecoder}
+TransDecoder.Predict -t ${trinity_out}/Trinity.fasta \
+  --output_dir ${transdecoder}
+mv Trinity.fasta.transdecoder.* ${transdecoder}
+
+## run blastp on protein coding regions
+blastp -query ${transdecoder}/Trinity.fasta.transdecoder.pep \
+  -db ${uniprot}/uniprot_sprot.fasta \
+  -out ${annotations}/blastp.outfmt6 \
+  -evalue 1e-3 \
+  -num_threads 25 \
+  -outfmt 6
+## filter blast output for top hit
+mkdir tmp
+sort -T tmp -g -k11,11 ${annotations}/blastp.outfmt6 | sort -T tmp -u -k1,1 > ${annotations}/filter_blastp.fmt6
+rm -r tmp/
+
+## identify protein families
+hmmscan \
+  --cpu 25 \
+  --domtblout ${annotations}/TrinotatePFAM.out \
+  ${pfam}/Pfam-A.hmm \
+  ${transdecoder}/Trinity.fasta.transdecoder.pep
+
+## identify transmembrane proteins
+tmhmm --short \
+  ${transdecoder}/Trinity.fasta.transdecoder.pep > \
+  ${annotations}/tmhmm.out
+
+## run simulatanous to transdecoder
+blastx -query ${trinity_out}/Trinity.fasta \
+  -db ${uniprot}/uniprot_sprot.fasta \
+  -out ${annotations}/blastx.outfmt6 \
+  -evalue 1e-3 \
+  -num_threads 25 \
+  -outfmt 6
 
 ```
 
@@ -267,7 +319,7 @@ slurm script template:
 #SBATCH --qos=defq
 #SBATCH --cpus-per-task=10
 #SBATCH --mem=50gb
-#SBATCH -t 100:00:00
+#SBATCH -t 21-00:00:00
 #SBATCH -o sortme_%A_%a.out
 #SBATCH --array=1-111%10
 pwd; hostname; date
