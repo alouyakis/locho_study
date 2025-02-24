@@ -22,4 +22,9 @@ blastx -query ${trinity_out}/Trinity.fasta \
   -num_threads 25 \
   -outfmt 6
 
+### filter for top hit
+mkdir tmp1
+sort -T tmp1 -g -k11,11 ${annotations}/blastx.outfmt6 | sort -T tmp1 -u -k1,1 > ${annotations}/filter_blastx.fmt6
+rm -r tmp1/
+
 date
