@@ -21,7 +21,7 @@ screen -R locho_study
 conda activate mtenv
 
 ## create output dirs and variables
-rawseqs="/data/Microbiome/NextSeq2000/250115_VH00394_26_2225LTJNX/Analysis/1/Data/fastq"
+export rawseqs="/data/Microbiome/NextSeq2000/250115_VH00394_26_2225LTJNX/Analysis/1/Data/fastq"
 export data="data"
 mkdir -p quality && export quality="quality"
 mkdir -p filtered && export filtseqs="filtered"
@@ -75,6 +75,14 @@ quality check:
 parallel -j 10 \
   fastqc ${rawseqs}/{1}*R1*.fastq.gz ${rawseqs}/{1}*R2*.fastq.gz \
     -o ${quality} -t 5 ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
+
+## fastx toolkit
+parallel -j 5 \
+  'gunzip -c ${rawseqs}/{1}*R1*.fastq.gz | fastx_quality_stats \
+  -o ${quality}/fastx_{1}_r1_stats.csv' ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
+parallel -j 5 \
+  gunzip -c ${rawseqs}/{1}*R2*.fastq.gz | fastx_quality_stats \
+  -o ${quality}/fastx_{1}_r1_stats.csv ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
 
 ## TODO - try RSeQC https://rseqc.sourceforge.net/
 ```
