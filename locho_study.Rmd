@@ -1,0 +1,40 @@
+---
+title: "locho_study"
+output: html_notebook
+---
+
+
+```{r load packages}
+Sys.time()
+
+library(tidyverse)
+```
+
+
+```{r plot quality}
+Sys.time()
+
+qual <- read.delim("quality/fastx_F-50179071-003S_r1_stats.csv", header = TRUE)
+
+ggplot(qual, aes(x = column, group = column)) +
+  theme_bw() +
+  geom_boxplot(stat = "identity", color="darkgrey", fill="lightgrey", alpha=0.2, 
+    aes(lower = Q1, 
+        upper = Q3,
+        middle = mean,
+        ymin = min,
+        ymax = max)) 
+
+ggplot(qual, aes(x = column, y = mean)) +
+  theme_bw() +
+  geom_line(color = "red")
+
+
+```
+
+
+
+
+
+
+### END ###
