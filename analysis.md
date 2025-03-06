@@ -310,15 +310,30 @@ rm -r tmp/
 ## TO DO - ADD GZIP TO LARGE FILES
 ```
 
+align reads to transdecoder predicted proteins
+```bash
+align_and_estimate_abundance.pl \
+  --transcripts ${transdecoder}/Trinity.fasta.transdecoder.cds \
+  --est_method RSEM \
+  --aln_method bowtie2 \
+  --trinity_mode \
+  --output_dir ${transdecoder} \
+  --prep_reference
 
+parallel -j 5 \
+  align_and_estimate_abundance.pl \
+    --transcripts ${trinity_out}/Trinity.fasta \
+    --seqType fq \
+    --left ${nohost}/mrna_{1}_rmhost_dog_r1.fq \
+    --right ${nohost}/mrna_{1}_rmhost_dog_r2.fq \
+    --est_method RSEM \
+    --output_dir ${alignments}/mrna_{1} \
+    --aln_method bowtie2 \
+    --thread_count 10 \
+    --gene_trans_map ${trinity_out}/Trinity.fasta.gene_trans_map \
+    --output_prefix mrna_{1} ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
 
-
-
-
-
-
-
-
+```
 
 
 
