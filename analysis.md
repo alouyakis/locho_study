@@ -307,6 +307,32 @@ mkdir tmp
 sort -T tmp -g -k11,11 ${annotations}/blastx.outfmt6 | sort -T tmp -u -k1,1 > ${annotations}/filter_blastx.fmt6
 rm -r tmp/
 
+## signalp on bacteria and eukaryotes
+signalp \
+  -format short \
+  -plot png \
+  -org euk \
+  -tmp tmp \
+  -prefix ${annotations}/signalp_euk.out \
+  -fasta ${transdecoder}/Trinity.fasta.transdecoder.pep
+
+signalp \
+  -format short \
+  -plot png \
+  -org gram- \
+  -tmp tmp \
+  -prefix ${annotations}/signalp_gramn.out \
+  -fasta ${transdecoder}/Trinity.fasta.transdecoder.pep
+
+signalp \
+  -format short \
+  -plot png \
+  -org gram+ \
+  -tmp tmp \
+  -prefix ${annotations}/signalp_gramp.out \
+  -fasta ${transdecoder}/Trinity.fasta.transdecoder.pep
+
+
 ## TO DO - ADD GZIP TO LARGE FILES
 ```
 
