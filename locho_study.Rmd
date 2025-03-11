@@ -46,19 +46,19 @@ blast_rslt <- read.table("annotations/blastx.outfmt6", header = FALSE, sep = "\t
 colnames(blast_rslt) <- c("query", "sseqid", "pident", "length", "mismatch", "gapopen", 
                           "qstart", "qend", "sstart", "send", "evalue", "bitscore")
 
-test <- blast_rslt %>% dplyr::select(query, sseqid, sstart, send, evalue) 
+test <- blast_rslt %>% dplyr::select(query, sseqid, qstart, qend, evalue) 
 
 test <- test %>% 
-  mutate(i_start = case_when(sstart < send ~ sstart,
-                             send < sstart ~ send))
+  mutate(i_start = case_when(qstart < qend ~ qstart,
+                             qend < qstart ~ qend))
 
 test <- test %>% 
-  mutate(i_end = case_when(sstart < send ~ send,
-                           send < sstart ~ sstart))
+  mutate(i_end = case_when(qstart < qend ~ qend,
+                           qend < qstart ~ qstart))
 
 test <- test %>% 
-  mutate(strand = case_when(sstart < send ~ "+", 
-                            send < sstart ~ "-"))
+  mutate(strand = case_when(qstart < qend ~ "+", 
+                            qend < qstart ~ "-"))
 
 test <- test %>% 
   select(query, sseqid, i_start, i_end, evalue, strand)
@@ -86,7 +86,7 @@ best_hits <- slice(test, filtered_data)
 TODO: HIGH PRIORITY cluster analysis
 TODO: account for repeated measure with diet as main effect and order of diet as repeated measure
 TODO: WGCNA 
-TODO: RLQ - which transcription factors controlling expression of each gene [Baty et al., 2013](https://pmc.ncbi.nlm.nih.gov/articles/PMC3686578/); [RLQ R tutorial](https://rfrelat.github.io/RLQ.html)
+TODO: RLQ - which transcription factors controlling expression of each gene [Baty et al., 2013](https://pmc.ncbi.nlm.nih.gov/articles/PMC3686578/); [RLQ R tutorial](https://rfrelat.github.io/RLQ.html); [matt's google drive on rlq](https://drive.google.com/drive/folders/1BTs1d1G__SJJWVmdvMHpZJOLJmAZ16GO)
 
 
 ### END ###
