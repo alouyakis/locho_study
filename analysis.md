@@ -119,7 +119,7 @@ parallel -j 10 \
 
 remove host from mRNA:  
 ```bash
-## align to dog
+## align to dog and output fq for unaligned (i.e. non-host)
 parallel -j 10 \
   'bowtie2 -p 5 -x ${dog} \
     -1 ${sortmerna}/mrna_{1}_fwd.fq.gz \
@@ -131,6 +131,15 @@ parallel -j 10 \
   bedtools bamtofastq -i ${nohost}/mrna_{1}_unmapped_sorted_dog.bam \
     -fq ${nohost}/mrna_{1}_rmhost_dog_r1.fq \
     -fq2 ${nohost}/mrna_{1}_rmhost_dog_r2.fq' ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
+
+## output reads aligned to host - not run - TODO: add to unaligned and remove sam/bam when finished
+# parallel -j 5 \
+#   'gunzip ${nohost}/mrna_{1}_mapped_and_unmapped_dog.bam.gz;
+#   samtools view -@ 5 -b -f 12 -F 4 ${nohost}/mrna_{1}_mapped_and_unmapped_dog.bam > ${nohost}/mrna_{1}_mapped_dog.bam;
+#   samtools sort -n ${nohost}/mrna_{1}_mapped_dog.bam > ${nohost}/mrna_{1}_mapped_sorted_dog.bam;
+#   bedtools bamtofastq -i ${nohost}/mrna_{1}_mapped_sorted_dog.bam \
+#     -fq ${nohost}/mrna_{1}_dog_r1.fq \
+#     -fq2 ${nohost}/mrna_{1}_dog_r2.fq' ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
 
 ## cleanup - may just delete
 gzip ${nohost}/*.sam
@@ -206,6 +215,8 @@ assembly housekeeping:
 ```
 ~/.conda/pkgs/trinity-2.8.5-h8b12597_5/bin/get_Trinity_gene_to_trans_map.pl ${trinity_out}/Trinity.fasta > ${trinity_out}/Trinity.fasta.gene_trans_map
 TrinityStats.pl ${trinity_out}/Trinity.fasta > ${tables}/TrinityStats_out.txt
+
+for i in ${trinity_out}/read_partitions/Fb_*/CBin_*; do rm -r ${i}; done
 ```
 
 align reads to assembly:
@@ -219,6 +230,20 @@ parallel -j 10 \
     -o ${alignments}/bowtie2_{1}.bam' ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
 
 cat 2>&1 ${tables}/align_stats_*.txt | less
+
+## alternative
+parallel -j 10 \
+  'bowtie2 -p 10 --local -q --no-unal -x ${trinity_out}/Trinity.fasta \
+    -1 ${nohost}/mrna_{1}_rmhost_dog_r1.fq \
+    -2 ${nohost}/mrna_{1}_rmhost_dog_r2.fq \
+    2>${tables}/alt_align_stats_{1}.txt | samtools view -@10 -Sb - | \
+    samtools sort -o ${alignments}/alt_bowtie2_{1}.bam' ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
+
+bowtie2 -p 10 --local -q --no-unal -x ${trinity_out}/Trinity.fasta \
+  -1 ${nohost}/mrna_F-50179058-003S_rmhost_dog_r1.fq \
+  -2 ${nohost}/mrna_F-50179058-003S_rmhost_dog_r2.fq \
+  2>${tables}/alt_align_stats_F-50179058-003S.txt | samtools view -@10 -Sb - | \
+  samtools sort -o ${alignments}/alt_bowtie2_F-50179058-003S.bam
 ```
 
 alignment counts:
