@@ -6,6 +6,8 @@
 Sample number: 106
 sequence path: /data/Microbiome/NextSeq2000/250115_VH00394_26_2225LTJNX/Analysis/1/Data/fastq
 analysis path: /home/artemisl/locho_study
+metagenome path: /data/Microbiome/CosmosID/TOBI_Study
+mg google drive: https://drive.google.com/drive/folders/1DOPGLeTZeCOzhImquL7inTqiR6rrSfGt
 
 questions for matt and dayakar about the analysis -
 1. use the metagenomes from the same samples to improve annotating taxa and functions?
