@@ -1,0 +1,44 @@
+/home/artemisl/locho_study
+alustt130
+Fri Mar  7 10:53:21 EST 2025
+
+CommandNotFoundError: Your shell has not been properly configured to use 'conda activate'.
+To initialize your shell, run
+
+    $ conda init <SHELL_NAME>
+
+Currently supported shells are:
+  - bash
+  - fish
+  - tcsh
+  - xonsh
+  - zsh
+  - powershell
+
+See 'conda init --help' for more information and options.
+
+IMPORTANT: You may need to close and restart your shell after running 'conda init'.
+
+
+SignalP-5.0. Starting fasta file reading...
+Total proteins read: 887077.
+Organism: euk.
+Starting protein prediction...
+Temporary directory: 
+Error creating temporary directory
+2025/03/07 20:41:20 stat tmp: no such file or directory
+SignalP-5.0. Starting fasta file reading...
+Total proteins read: 887077.
+Organism: gram-.
+Starting protein prediction...
+Temporary directory: 
+Error creating temporary directory
+2025/03/08 01:28:23 stat tmp: no such file or directory
+SignalP-5.0. Starting fasta file reading...
+Total proteins read: 887077.
+Organism: gram+.
+Starting protein prediction...
+Temporary directory: 
+Error creating temporary directory
+2025/03/08 06:03:20 stat tmp: no such file or directory
+Sat Mar  8 01:03:20 EST 2025
