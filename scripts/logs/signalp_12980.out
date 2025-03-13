@@ -1,0 +1,49 @@
+/home/artemisl/locho_study
+alustt130
+Mon Mar 10 12:20:05 EDT 2025
+
+CondaError: Run 'conda init' before 'conda activate'
+
+SignalP-5.0. Starting fasta file reading...
+Total proteins read: 887077.
+Organism: euk.
+Starting protein prediction...
+Temporary directory: tmp/signalp5.189563840
+panic: runtime error: slice bounds out of range
+
+goroutine 1 [running]:
+github.com/tensorflow/tensorflow/tensorflow/go.tensorData(0x2aaac8001180, 0xc858d22780, 0x678880, 0x6e6688)
+	/home/people/jjalma/go/src/github.com/tensorflow/tensorflow/tensorflow/go/tensor.go:210 +0xa1
+github.com/tensorflow/tensorflow/tensorflow/go.NewTensor(0x674000, 0xc858d22760, 0x674000, 0xc858d22760, 0x0)
+	/home/people/jjalma/go/src/github.com/tensorflow/tensorflow/tensorflow/go/tensor.go:94 +0x221
+main.main()
+	/home/people/jjalma/SignalP-5.0b/signalp.go:607 +0x5870
+SignalP-5.0. Starting fasta file reading...
+Total proteins read: 887077.
+Organism: gram-.
+Starting protein prediction...
+Temporary directory: tmp/signalp5.936640787
+panic: runtime error: slice bounds out of range
+
+goroutine 1 [running]:
+github.com/tensorflow/tensorflow/tensorflow/go.tensorData(0x2aaac0002100, 0xc7b79f4ac0, 0x678880, 0x6e6688)
+	/home/people/jjalma/go/src/github.com/tensorflow/tensorflow/tensorflow/go/tensor.go:210 +0xa1
+github.com/tensorflow/tensorflow/tensorflow/go.NewTensor(0x674000, 0xc7b79f4aa0, 0x674000, 0xc7b79f4aa0, 0x0)
+	/home/people/jjalma/go/src/github.com/tensorflow/tensorflow/tensorflow/go/tensor.go:94 +0x221
+main.main()
+	/home/people/jjalma/SignalP-5.0b/signalp.go:607 +0x5870
+SignalP-5.0. Starting fasta file reading...
+Total proteins read: 887077.
+Organism: gram+.
+Starting protein prediction...
+Temporary directory: tmp/signalp5.802099259
+panic: runtime error: slice bounds out of range
+
+goroutine 1 [running]:
+github.com/tensorflow/tensorflow/tensorflow/go.tensorData(0x2aaac0ea4640, 0xc89360c500, 0x678880, 0x6e6688)
+	/home/people/jjalma/go/src/github.com/tensorflow/tensorflow/tensorflow/go/tensor.go:210 +0xa1
+github.com/tensorflow/tensorflow/tensorflow/go.NewTensor(0x674000, 0xc89360c4e0, 0x674000, 0xc89360c4e0, 0x0)
+	/home/people/jjalma/go/src/github.com/tensorflow/tensorflow/tensorflow/go/tensor.go:94 +0x221
+main.main()
+	/home/people/jjalma/SignalP-5.0b/signalp.go:607 +0x5870
+Tue Mar 11 14:32:20 EDT 2025

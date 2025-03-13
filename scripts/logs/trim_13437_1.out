@@ -1,0 +1,8 @@
+alustt130
+/home/artemisl/locho_study
+Thu Mar 13 17:37:01 EDT 2025
+TrimmomaticPE: Started with arguments:
+ /data/Microbiome/CosmosID/TOBI_Study/F-50179058-003S_S58_L002_R1_001.fastq.gz /data/Microbiome/CosmosID/TOBI_Study/F-50179058-003S_S58_L002_R2_001.fastq.gz filtered/mg_F-50179058-003S_trimmed-pair_R1.fastq.gz filtered/mg_F-50179058-003S_trimmed-single_R1.fastq.gz filtered/mg_F-50179058-003S_trimmed-pair_R2.fastq.gz filtered/mg_F-50179058-003S_trimmed-single_R2.fastq.gz ILLUMINACLIP:/data/databases/adapters/TruSeq3-PE.fa:2:30:10:2:True LEADING:3 TRAILING:3 MINLEN:36
+Using PrefixPair: 'TACACTCTTTCCCTACACGACGCTCTTCCGATCT' and 'GTGACTGGAGTTCAGACGTGTGCTCTTCCGATCT'
+ILLUMINACLIP: Using 1 prefix pairs, 0 forward/reverse sequences, 0 forward only sequences, 0 reverse only sequences
+Quality encoding detected as phred33
