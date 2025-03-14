@@ -167,7 +167,7 @@ rm ${nohost}/mg_${sample}_mapped_and_unmapped_dog.bam
 rm ${nohost}/mg_${sample}_unmapped_dog.bam
 rm ${nohost}/mg_${sample}_unmapped_sorted_dog.bam
 
-done
+date
 
 
 
