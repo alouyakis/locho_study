@@ -4,6 +4,7 @@ filtered
 sortmerna
 nohost
 trinity_out
+spades
 alignments/*
 annotations/*
 !annotations/filter_blastx.fmt6
