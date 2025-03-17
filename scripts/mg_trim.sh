@@ -24,8 +24,8 @@ sample=$(basename -a ${INPUT_PATH} | cut -f 1 -d '_')
 
 trimmomatic PE \
   ${rawseqs_mg}/${sample}_*R1*.fastq.gz ${rawseqs_mg}/${sample}_*R2*.fastq.gz \
-  ${filtseqs}/mg_${sample}_trimmed-pair_R1.fastq.gz ${filtseqs}/mg_${sample}_trimmed-single_R1.fastq.gz \
-  ${filtseqs}/mg_${sample}_trimmed-pair_R2.fastq.gz ${filtseqs}/mg_${sample}_trimmed-single_R2.fastq.gz \
+  ${filtseqs}/mg2_${sample}_trimmed-pair_R1.fastq.gz ${filtseqs}/mg2_${sample}_trimmed-single_R1.fastq.gz \
+  ${filtseqs}/mg2_${sample}_trimmed-pair_R2.fastq.gz ${filtseqs}/mg2_${sample}_trimmed-single_R2.fastq.gz \
   ILLUMINACLIP:/data/databases/adapters/TruSeq3-PE.fa:2:30:10:2:True LEADING:3 TRAILING:3 MINLEN:36
 
 bowtie2 -p 10 -x ${dog} \
@@ -44,5 +44,5 @@ rm ${nohost}/mg_${sample}_mapped_and_unmapped_dog.bam
 rm ${nohost}/mg_${sample}_unmapped_dog.bam
 rm ${nohost}/mg_${sample}_unmapped_sorted_dog.bam
 
-done
+date
 

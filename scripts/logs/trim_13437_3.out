@@ -8,3 +8,21 @@ ILLUMINACLIP: Using 1 prefix pairs, 0 forward/reverse sequences, 0 forward only 
 Quality encoding detected as phred33
 Input Read Pairs: 2793666 Both Surviving: 2793666 (100.00%) Forward Only Surviving: 0 (0.00%) Reverse Only Surviving: 0 (0.00%) Dropped: 0 (0.00%)
 TrimmomaticPE: Completed successfully
+2793666 reads; of these:
+  2793666 (100.00%) were paired; of these:
+    2793284 (99.99%) aligned concordantly 0 times
+    291 (0.01%) aligned concordantly exactly 1 time
+    91 (0.00%) aligned concordantly >1 times
+    ----
+    2793284 pairs aligned concordantly 0 times; of these:
+      71 (0.00%) aligned discordantly 1 time
+    ----
+    2793213 pairs aligned 0 times concordantly or discordantly; of these:
+      5586426 mates make up the pairs; of these:
+        5586293 (100.00%) aligned 0 times
+        46 (0.00%) aligned exactly 1 time
+        87 (0.00%) aligned >1 times
+0.02% overall alignment rate
+[bam_sort_core] merging from 2 files and 1 in-memory blocks...
+/cm/local/apps/slurm/var/spool/job13440/slurm_script: line 47: syntax error near unexpected token `done'
+/cm/local/apps/slurm/var/spool/job13440/slurm_script: line 47: `done'
