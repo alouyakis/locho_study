@@ -12,6 +12,7 @@ sequence path: /data/Microbiome/NextSeq2000/250115_VH00394_26_2225LTJNX/Analysis
 analysis path: /home/artemisl/locho_study
 metagenome path: /data/Microbiome/CosmosID/TOBI_Study
 mg google drive: https://drive.google.com/drive/folders/1DOPGLeTZeCOzhImquL7inTqiR6rrSfGt
+ 
 
 set up:
 ```bash
@@ -118,9 +119,10 @@ cd ${wd}
 
 ```
 
+
 scratch slurm script construction
 TODO: write pipeline to create slurm scripts
-```
+```bash
 #!/usr/bin/env bash
 #SBATCH --cpus-per-task=10
 #SBATCH --mem=10G
