@@ -13,6 +13,10 @@ questions for matt and dayakar about the analysis -
 1. use the metagenomes from the same samples to improve annotating taxa and functions?
 2. will this study include the metabolite data with the unknowns?
 
+considerations:
+ - crossover study, so look into mixed effects model for repeated measures in mg/mt data analysis
+
+
 set up:
 ```bash
 ## clone git repo
