@@ -1,0 +1,28 @@
+alustt130
+/home/artemisl/locho_study
+Thu Mar 13 22:15:43 EDT 2025
+TrimmomaticPE: Started with arguments:
+ /data/Microbiome/CosmosID/TOBI_Study/F-50179269-003S_S59_L002_R1_001.fastq.gz /data/Microbiome/CosmosID/TOBI_Study/F-50179269-003S_S59_L002_R2_001.fastq.gz filtered/mg_F-50179269-003S_trimmed-pair_R1.fastq.gz filtered/mg_F-50179269-003S_trimmed-single_R1.fastq.gz filtered/mg_F-50179269-003S_trimmed-pair_R2.fastq.gz filtered/mg_F-50179269-003S_trimmed-single_R2.fastq.gz ILLUMINACLIP:/data/databases/adapters/TruSeq3-PE.fa:2:30:10:2:True LEADING:3 TRAILING:3 MINLEN:36
+Using PrefixPair: 'TACACTCTTTCCCTACACGACGCTCTTCCGATCT' and 'GTGACTGGAGTTCAGACGTGTGCTCTTCCGATCT'
+ILLUMINACLIP: Using 1 prefix pairs, 0 forward/reverse sequences, 0 forward only sequences, 0 reverse only sequences
+Quality encoding detected as phred33
+Input Read Pairs: 4192512 Both Surviving: 4192512 (100.00%) Forward Only Surviving: 0 (0.00%) Reverse Only Surviving: 0 (0.00%) Dropped: 0 (0.00%)
+TrimmomaticPE: Completed successfully
+4192512 reads; of these:
+  4192512 (100.00%) were paired; of these:
+    4187816 (99.89%) aligned concordantly 0 times
+    3540 (0.08%) aligned concordantly exactly 1 time
+    1156 (0.03%) aligned concordantly >1 times
+    ----
+    4187816 pairs aligned concordantly 0 times; of these:
+      413 (0.01%) aligned discordantly 1 time
+    ----
+    4187403 pairs aligned 0 times concordantly or discordantly; of these:
+      8374806 mates make up the pairs; of these:
+        8374242 (99.99%) aligned 0 times
+        144 (0.00%) aligned exactly 1 time
+        420 (0.01%) aligned >1 times
+0.13% overall alignment rate
+[bam_sort_core] merging from 3 files and 1 in-memory blocks...
+/cm/local/apps/slurm/var/spool/job13542/slurm_script: line 47: syntax error near unexpected token `done'
+/cm/local/apps/slurm/var/spool/job13542/slurm_script: line 47: `done'

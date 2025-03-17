@@ -6,3 +6,23 @@ TrimmomaticPE: Started with arguments:
 Using PrefixPair: 'TACACTCTTTCCCTACACGACGCTCTTCCGATCT' and 'GTGACTGGAGTTCAGACGTGTGCTCTTCCGATCT'
 ILLUMINACLIP: Using 1 prefix pairs, 0 forward/reverse sequences, 0 forward only sequences, 0 reverse only sequences
 Quality encoding detected as phred33
+Input Read Pairs: 3283384 Both Surviving: 3283384 (100.00%) Forward Only Surviving: 0 (0.00%) Reverse Only Surviving: 0 (0.00%) Dropped: 0 (0.00%)
+TrimmomaticPE: Completed successfully
+3283384 reads; of these:
+  3283384 (100.00%) were paired; of these:
+    3282462 (99.97%) aligned concordantly 0 times
+    224 (0.01%) aligned concordantly exactly 1 time
+    698 (0.02%) aligned concordantly >1 times
+    ----
+    3282462 pairs aligned concordantly 0 times; of these:
+      42 (0.00%) aligned discordantly 1 time
+    ----
+    3282420 pairs aligned 0 times concordantly or discordantly; of these:
+      6564840 mates make up the pairs; of these:
+        6564577 (100.00%) aligned 0 times
+        71 (0.00%) aligned exactly 1 time
+        192 (0.00%) aligned >1 times
+0.03% overall alignment rate
+[bam_sort_core] merging from 2 files and 1 in-memory blocks...
+/cm/local/apps/slurm/var/spool/job13438/slurm_script: line 47: syntax error near unexpected token `done'
+/cm/local/apps/slurm/var/spool/job13438/slurm_script: line 47: `done'
