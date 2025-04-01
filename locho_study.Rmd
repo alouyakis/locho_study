@@ -82,6 +82,48 @@ for(i in 1:nrow(list_revmap)){
 best_hits <- slice(test, filtered_data)
 ```
 
+```{r prep for multimedia}
+Sys.time()
+
+metaphlan <- readxl::read_excel("data/msystems.00452-24-s0004.xlsx")
+colnames(metaphlan) <- gsub("-005S|-004S|-003S|-002S", "", colnames(metaphlan))
+metaphlan <- metaphlan %>% 
+  column_to_rownames("Taxonomy\\Sample ID")
+
+# Define a function to create a table for a given taxonomic level
+create_taxa_table <- function(metaphlan, level) {
+  level_names <- c("domain", "phylum", "class", "order", "family", "genus", "species")
+  level_index <- match(level, level_names)
+  
+  # Create a list of columns to remove based on the current level
+  cols_to_remove <- level_names[(level_index + 1):length(level_names)]
+  
+  metaphlan %>%
+    rownames_to_column() %>%
+    separate(col = "rowname", sep = "\\|", into = level_names, fill = "right") %>%
+    # Filter out rows where the next level is NA, but the current level is not NA
+    filter(if (level_index < length(level_names)) is.na(get(level_names[level_index + 1])) & !is.na(get(level)) else !is.na(get(level))) %>%
+    # Select the current level and the data columns
+    select(all_of(c(level, setdiff(names(metaphlan), cols_to_remove)))) %>%
+    # Set the current level as row names
+    column_to_rownames(var = level)
+}
+
+# List of taxonomic levels
+levels <- c("domain", "phylum", "class", "order", "family", "genus", "species")
+
+# Apply the function to each level and store the results in a list
+taxa_tables <- map(levels, ~create_taxa_table(metaphlan, .x))
+
+# Set the names of the list elements to match the taxonomic levels
+names(taxa_tables) <- levels
+
+# Now you can access the phylum table using the name
+species_table <- taxa_tables[["species"]]
+write.csv(species_table, "tables/metaphlan_species.csv", quote = FALSE)
+```
+
+
 
 TODO: HIGH PRIORITY cluster analysis
 TODO: account for repeated measure with diet as main effect and order of diet as repeated measure

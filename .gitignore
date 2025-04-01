@@ -7,6 +7,7 @@ trinity_out
 spades
 alignments/*
 annotations/*
+scripts/logs/*spades*
 !annotations/filter_blastx.fmt6
 !annotations/filter_blastp.fmt6
 
