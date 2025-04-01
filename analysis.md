@@ -380,22 +380,31 @@ align_and_estimate_abundance.pl \
 
 parallel -j 5 \
   align_and_estimate_abundance.pl \
-    --transcripts ${trinity_out}/Trinity.fasta \
+    --transcripts ${transdecoder}/Trinity.fasta.transdecoder.cds \
     --seqType fq \
     --left ${nohost}/mrna_{1}_rmhost_dog_r1.fq \
     --right ${nohost}/mrna_{1}_rmhost_dog_r2.fq \
     --est_method RSEM \
-    --output_dir ${alignments}/mrna_{1} \
+    --output_dir ${alignments}/mrna2prot_{1} \
     --aln_method bowtie2 \
     --thread_count 10 \
-    --gene_trans_map ${trinity_out}/Trinity.fasta.gene_trans_map \
+    --gene_trans_map 'none' \
     --output_prefix mrna_{1} ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
+
+## not working due to gene_trans_map file
+
+# parallel -j 5 \
+#   rsem-calculate-expression \
+#     --paired-end ${nohost}/mrna_{1}_rmhost_dog_r1.fq ${nohost}/mrna_{1}_rmhost_dog_r2.fq \
+#     ${transdecoder}/Trinity.fasta.transdecoder.cds {1} ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
 
 ```
 
 
-
-
+TODO: add Zhang et al 2025 co-expression analysis
+TODO: add maaslin3 https://huttenhower.sph.harvard.edu/maaslin3/
+TODO: add multimedia analysis using mg/mt/mb https://github.com/krisrs1128/multimedia
+TODO: add map coloring for kegg https://www.kegg.jp/kegg/webapp/color_url.html
 
 
 

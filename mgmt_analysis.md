@@ -86,10 +86,77 @@ gzip ${nohost}/*.sam
 gzip ${nohost}/*.bam
 ```
 
+run spades assembly via slurm script
+```bash
+#!/usr/bin/env bash
+#SBATCH --cpus-per-task=10
+#SBATCH --mem=50G
+#SBATCH --job-name=assembly
+#SBATCH --output=scripts/logs/spades_%A_%a.out
+#SBATCH --array=1-106%5
+#SBATCH --export=ALL
+#SBATCH -p defq
+#SBATCH -N 1
+hostname; pwd; date
 
+source /home/artemisl/miniforge3/etc/profile.d/conda.sh
+conda activate mtenv
 
+export rawseqs_mg="/data/Microbiome/CosmosID/TOBI_Study"
+export nohost="nohost"
+export spades="spades"
 
+RUN=${SLURM_ARRAY_TASK_ID}
 
+INPUT_PATH=$(ls ${rawseqs_mg}/*R1*.fastq.gz | sed -n "${RUN} p")
+sample=$(basename -a ${INPUT_PATH} | cut -f 1 -d '_')
+
+echo -e "\nRun ID: ${RUN}"
+echo -e "\nSample: ${sample}"
+
+spades.py --meta -t 10 -m 50 \
+  -1 ${nohost}/mg_${sample}*_rmhost_dog_r1.fq \
+  -2 ${nohost}/mg_${sample}*_rmhost_dog_r2.fq \
+  -o ${spades}/nohost_${sample}
+
+date
+```
+
+run biobakery using mg & mt seqs
+```bash
+export rawseqs_mt="/data/Microbiome/NextSeq2000/250115_VH00394_26_2225LTJNX/Analysis/1/Data/fastq"
+export rawseqs_mg="/data/Microbiome/CosmosID/TOBI_Study"
+export outdir=/home/artemisl/1000dogs/bb4_wmgx_wmtx_out
+export data="/home/artemisl/1000dogs/data"
+
+export HOST="dog"
+export KNEADDATA_DB_HUMAN_GENOME=/data/databases/kneaddata_2023/${HOST}
+export METAPHLAN_DB=/data/databases/biobakery/bb4/metaphlan
+export CHOCOPHLAN_DB=/data/databases/biobakery/bb4/humann/chocophlan_v4_alpha
+export METAPHLAN_INDEX=mpa_vOct22_CHOCOPhlAnSGB_202403
+
+biobakery_workflows wmgx_wmtx \
+  --input-metagenome ${rawseqs_mg} --input-metatranscriptome ${rawseqs_mt} --input-mapping ${data}/bb4_mtmg_map.tsv \
+  --output ${outdir} --threads 10 --pair-identifier _R1_001 \
+  --grid-jobs 10 --grid slurm --grid-scratch ${outdir}/scratch --grid-partition="defq" \
+  --grid-environment="
+source /home/artemisl/miniforge3/etc/profile.d/conda.sh
+conda activate /home/artemisl/miniforge3/envs/biobakery4
+export KNEADDATA_DB_HUMAN_GENOME=/data/databases/kneaddata_2023/${HOST}" \
+  --contaminate-databases /data/databases/kneaddata_2023/${HOST}/ \
+  --skip-nothing --remove-intermediate-output --bypass-strain-profiling \
+  --qc-options="--max-memory=1000m --run-trf \
+    --trimmomatic=/data/Microbiome/RefData/Metagenomics/biobakery_workflows_databases/Trimmomatic-0.39/ \
+    --trf /home/artemisl/miniforge3/envs/biobakery4/bin/" \
+  --taxonomic-profiling-options="--add_viruses --bowtie2db=${METAPHLAN_DB} \
+    --index ${METAPHLAN_INDEX} --unclassified_estimation -t rel_ab_w_read_stats" \
+  --functional-profiling-options="--nucleotide-database ${CHOCOPHLAN_DB} \
+    --protein-database /data/databases/biobakery/bb4/humann/uniref90/uniref/ \
+    --remove-stratified-output --memory-use minimum "
+### ERROR TO FIX MONDAY
+# wmgx_wmtx.py: error: unrecognized arguments: --contaminate-databases /data/databases/kneaddata_2023/dog/ --functional-profiling-options=--nucleotide-database /data/databases/biobakery/bb4/humann/chocophlan_v4_alpha     --protein-database /data/databases/biobakery/bb4/humann/uniref90/uniref/     --remove-stratified-output --memory-use minimum
+
+```
 
 
 
@@ -201,6 +268,24 @@ spades.py --meta -t 10 -m 50 \
   -1 ${nohost}/mg_${sample}*_rmhost_dog_r1.fq \
   -2 ${nohost}/mg_${sample}*_rmhost_dog_r2.fq \
   -o ${spades}/nohost_${sample}
+
+date
+```
+
+
+
+```bash
+#!/usr/bin/env bash
+#SBATCH --cpus-per-task=36
+#SBATCH --mem=150G
+#SBATCH --job-name=mothur
+#SBATCH --output=logs/mothur_%j.out
+#SBATCH --export=ALL
+#SBATCH -p defq
+#SBATCH -N 1
+hostname; pwd; date
+
+##
 
 date
 ```
