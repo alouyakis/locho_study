@@ -10,7 +10,25 @@ Sys.time()
 library(tidyverse)
 ```
 
+```{r import data}
+Sys.time()
 
+counts <- read.delim("alignments/iso.counts.matrix", row.names = 1)
+tpm <- read.delim("alignments/iso.TPM.not_cross_norm", row.names = 1)
+# tmm <- read.delim("alignments/iso.TMM.EXPR.matrix", row.names = 1)
+
+colSums(counts)
+```
+
+
+## cluster
+```{r clustering}
+Sys.time()
+
+
+```
+
+## plotting quality not needed if running fastqc
 ```{r plot quality}
 Sys.time()
 
@@ -82,6 +100,7 @@ for(i in 1:nrow(list_revmap)){
 best_hits <- slice(test, filtered_data)
 ```
 
+## create metaphlan table at species level for arby to run through multimedia
 ```{r prep for multimedia}
 Sys.time()
 
@@ -122,6 +141,7 @@ names(taxa_tables) <- levels
 species_table <- taxa_tables[["species"]]
 write.csv(species_table, "tables/metaphlan_species.csv", quote = FALSE)
 ```
+
 
 
 
