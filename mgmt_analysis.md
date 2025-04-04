@@ -82,8 +82,8 @@ parallel -j 10 \
 #     -fq2 ${nohost}/mrna_{1}_dog_r2.fq' ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
 
 ## cleanup - may just delete
-gzip ${nohost}/*.sam
-gzip ${nohost}/*.bam
+rm ${nohost}/*.sam
+rm ${nohost}/*.bam
 ```
 
 run spades assembly via slurm script
@@ -129,7 +129,7 @@ export rawseqs_mg="/data/Microbiome/CosmosID/TOBI_Study"
 export outdir=/home/artemisl/1000dogs/bb4_wmgx_wmtx_out
 export data="/home/artemisl/1000dogs/data"
 
-export HOST="dog"
+export HOST=dog
 export KNEADDATA_DB_HUMAN_GENOME=/data/databases/kneaddata_2023/${HOST}
 export METAPHLAN_DB=/data/databases/biobakery/bb4/metaphlan
 export CHOCOPHLAN_DB=/data/databases/biobakery/bb4/humann/chocophlan_v4_alpha
@@ -138,25 +138,26 @@ export METAPHLAN_INDEX=mpa_vOct22_CHOCOPhlAnSGB_202403
 biobakery_workflows wmgx_wmtx \
   --input-metagenome ${rawseqs_mg} --input-metatranscriptome ${rawseqs_mt} --input-mapping ${data}/bb4_mtmg_map.tsv \
   --output ${outdir} --threads 10 --pair-identifier _R1_001 \
-  --grid-jobs 10 --grid slurm --grid-scratch ${outdir}/scratch --grid-partition="defq" \
+  --grid-jobs 5 --grid slurm --grid-scratch ${outdir}/scratch --grid-partition="defq" \
   --grid-environment="
 source /home/artemisl/miniforge3/etc/profile.d/conda.sh
 conda activate /home/artemisl/miniforge3/envs/biobakery4
+export HOST=dog
 export KNEADDATA_DB_HUMAN_GENOME=/data/databases/kneaddata_2023/${HOST}" \
-  --contaminate-databases /data/databases/kneaddata_2023/${HOST}/ \
+  # --contaminate-databases /data/databases/kneaddata_2023/${HOST}/ \
   --skip-nothing --remove-intermediate-output --bypass-strain-profiling \
   --qc-options="--max-memory=1000m --run-trf \
     --trimmomatic=/data/Microbiome/RefData/Metagenomics/biobakery_workflows_databases/Trimmomatic-0.39/ \
     --trf /home/artemisl/miniforge3/envs/biobakery4/bin/" \
   --taxonomic-profiling-options="--add_viruses --bowtie2db=${METAPHLAN_DB} \
-    --index ${METAPHLAN_INDEX} --unclassified_estimation -t rel_ab_w_read_stats" \
-  --functional-profiling-options="--nucleotide-database ${CHOCOPHLAN_DB} \
-    --protein-database /data/databases/biobakery/bb4/humann/uniref90/uniref/ \
-    --remove-stratified-output --memory-use minimum "
-### ERROR TO FIX MONDAY
-# wmgx_wmtx.py: error: unrecognized arguments: --contaminate-databases /data/databases/kneaddata_2023/dog/ --functional-profiling-options=--nucleotide-database /data/databases/biobakery/bb4/humann/chocophlan_v4_alpha     --protein-database /data/databases/biobakery/bb4/humann/uniref90/uniref/     --remove-stratified-output --memory-use minimum
-
+    --index ${METAPHLAN_INDEX} --unclassified_estimation -t rel_ab_w_read_stats"
+  # --functional-profiling-options="--nucleotide-database ${CHOCOPHLAN_DB} \
+  #   --protein-database /data/databases/biobakery/bb4/humann/uniref90/uniref/ \
+  #   --remove-stratified-output --memory-use minimum "
 ```
+### ERRORS TO FIX
+wmgx_wmtx.py: error: unrecognized arguments: --contaminate-databases /data/databases/kneaddata_2023/x86_64-conda_cos6-linux-gnu/ --functional-profiling-options=--nucleotide-database /data/databases/biobakery/bb4/humann/chocophlan_v4_alpha     --protein-database /data/databases/biobakery/bb4/humann/uniref90/uniref/     --remove-stratified-output --memory-use minimum
+ERROR: Unable to find database KNEADDATA_DB_HUMAN_TRANSCRIPTOME. This is the folder containing the KneadData bowtie2 database for the human transcriptome.This database can be downloaded with KneadData. Unable to find in default install folders or with environment variables.
 
 
 
