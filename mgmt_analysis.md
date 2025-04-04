@@ -126,11 +126,13 @@ run biobakery using mg & mt seqs
 ```bash
 export rawseqs_mt="/data/Microbiome/NextSeq2000/250115_VH00394_26_2225LTJNX/Analysis/1/Data/fastq"
 export rawseqs_mg="/data/Microbiome/CosmosID/TOBI_Study"
-export outdir=/home/artemisl/1000dogs/bb4_wmgx_wmtx_out
-export data="/home/artemisl/1000dogs/data"
+export outdir=/home/artemisl/locho_study/bb4_wmgx_wmtx_out
+export data="/home/artemisl/locho_study/data"
 
 export HOST=dog
-export KNEADDATA_DB_HUMAN_GENOME=/data/databases/kneaddata_2023/${HOST}
+export KNEADDATA_DB_HUMAN_GENOME=/data/databases/biobakery/bb4/kneaddata_2023/${HOST}
+export KNEADDATA_DB_HUMAN_TRANSCRIPTOME=/data/databases/biobakery/bb4/kneaddata_2023/${HOST}/rna
+export KNEADDATA_DB_RIBOSOMAL_RNA=/data/databases/biobakery/bb4/kneaddata_2023/ribosomal
 export METAPHLAN_DB=/data/databases/biobakery/bb4/metaphlan
 export CHOCOPHLAN_DB=/data/databases/biobakery/bb4/humann/chocophlan_v4_alpha
 export METAPHLAN_INDEX=mpa_vOct22_CHOCOPhlAnSGB_202403
@@ -143,21 +145,21 @@ biobakery_workflows wmgx_wmtx \
 source /home/artemisl/miniforge3/etc/profile.d/conda.sh
 conda activate /home/artemisl/miniforge3/envs/biobakery4
 export HOST=dog
-export KNEADDATA_DB_HUMAN_GENOME=/data/databases/kneaddata_2023/${HOST}" \
-  # --contaminate-databases /data/databases/kneaddata_2023/${HOST}/ \
+export KNEADDATA_DB_HUMAN_TRANSCRIPTOME=/data/databases/biobakery/bb4/kneaddata_2023/${HOST}/rna
+export KNEADDATA_DB_HUMAN_GENOME=/data/databases/biobakery/bb4/kneaddata_2023/${HOST}
+export KNEADDATA_DB_RIBOSOMAL_RNA=/data/databases/biobakery/bb4/kneaddata_2023/ribosomal" \
   --skip-nothing --remove-intermediate-output --bypass-strain-profiling \
   --qc-options="--max-memory=1000m --run-trf \
     --trimmomatic=/data/Microbiome/RefData/Metagenomics/biobakery_workflows_databases/Trimmomatic-0.39/ \
     --trf /home/artemisl/miniforge3/envs/biobakery4/bin/" \
   --taxonomic-profiling-options="--add_viruses --bowtie2db=${METAPHLAN_DB} \
     --index ${METAPHLAN_INDEX} --unclassified_estimation -t rel_ab_w_read_stats"
-  # --functional-profiling-options="--nucleotide-database ${CHOCOPHLAN_DB} \
-  #   --protein-database /data/databases/biobakery/bb4/humann/uniref90/uniref/ \
-  #   --remove-stratified-output --memory-use minimum "
+
 ```
 ### ERRORS TO FIX
 wmgx_wmtx.py: error: unrecognized arguments: --contaminate-databases /data/databases/kneaddata_2023/x86_64-conda_cos6-linux-gnu/ --functional-profiling-options=--nucleotide-database /data/databases/biobakery/bb4/humann/chocophlan_v4_alpha     --protein-database /data/databases/biobakery/bb4/humann/uniref90/uniref/     --remove-stratified-output --memory-use minimum
 ERROR: Unable to find database KNEADDATA_DB_HUMAN_TRANSCRIPTOME. This is the folder containing the KneadData bowtie2 database for the human transcriptome.This database can be downloaded with KneadData. Unable to find in default install folders or with environment variables.
+ERROR: Unable to find database KNEADDATA_DB_RIBOSOMAL_RNA. This is the folder containing the KneadData bowtie2 database of SILVA rRNA.This database can be downloaded with KneadData. Unable to find in default install folders or with environment variables.
 
 
 
