@@ -17,7 +17,8 @@ counts <- read.delim("alignments/iso.counts.matrix", row.names = 1)
 tpm <- read.delim("alignments/iso.TPM.not_cross_norm", row.names = 1)
 # tmm <- read.delim("alignments/iso.TMM.EXPR.matrix", row.names = 1)
 
-colSums(counts)
+count_totals <- as.data.frame(colSums(counts))
+write.table(count_totals, "tables/count_totals.csv", quote = FALSE, col.names = FALSE)
 ```
 
 
