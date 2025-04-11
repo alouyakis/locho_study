@@ -440,4 +440,35 @@ echo -e "\nSample: ${SAMPLE}"
 ```
 
 
+
+housekeeping
+```bash
+for i in *; do du -sh ${i}; done
+# 325G	alignments
+rm alignments/*.bam.gz
+# 16K	analysis.md
+# 31G	annotations
+gzip annotations/blast*
+# 1.1T	bb4_wmgx_wmtx_out
+# 15M	data
+# 216G	filtered
+# 36K	LICENSE
+# 692K	locho_study.nb.html
+# 8.0K	locho_study.Rmd
+# 4.0K	locho_study.Rproj
+# 12K	mgmt_analysis.md
+# 1.3T	nohost
+# 4.0K	plots
+# 131M	quality
+# 4.0K	README.md
+# 24M	scripts
+# 411G	sortmerna
+# 323G	spades
+# 660K	tables
+# 0	TMHMM_194952
+# 0	tmp
+# 126G	trinity_out
+```
+
+
 END
