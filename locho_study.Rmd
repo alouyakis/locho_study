@@ -114,24 +114,34 @@ mgmt_map <- read.delim("data/bb4_mtmg_map.tsv") %>%
 sample_data <- read.delim("data/locho_105536_sample_data.tsv")
 results_data <- read.delim("data/locho_105536_results_data.tsv")
 
-metadata <- merge(mg_metadata, mgmt_map, by = "mg", all = TRUE)
+metadata <- merge(mg_metadata, mgmt_map, by = "mg", all = TRUE) %>%
+  drop_na(mt)
 
 sd <- sample_data %>%
   select(ck_number, animal_id, sample_type, cp_phase, test_day) %>%
   distinct()
 
 rd <- results_data %>%
-  select(ck_number, animal_id, animal_name, tattoo_number, sample_type, matrix, 
-         cp_phase, phase_day, analyte, standard_value, standard_unit) %>%
+  select(ck_number, animal_id, animal_name, tattoo_number, sample_type, matrix,
+         cp_phase, phase_day, analysis_method, operating_set, analyte, standard_value, standard_unit) %>%
   unite("unique_id", c(animal_name, tattoo_number, cp_phase, phase_day)) %>%
   distinct()
 
-rdw <- rd %>%
-  pivot_wider(names_from = c(sample_type, matrix, analyte),
-              values_from = c(standard_value, standard_unit))
-
-metadata %>% 
-  select(mg, mt, diet_name)
+# rdw <- rd %>%
+#   pivot_wider(names_from = c(sample_type, matrix, analysis_method, operating_set, analyte),
+#               values_from = c(standard_value, standard_unit),
+#               id_cols = )
+# 
+# metadata %>% 
+#   select(mg, mt, diet_name)
+# 
+# rd |>
+#   dplyr::summarise(n = dplyr::n(), .by = c(ck_number, animal_id, unique_id, sample_type, matrix, operating_set,
+#   analyte)) |>
+#   dplyr::filter(n > 1L)
+# 
+# results_data %>%
+#   filter(ck_number == "B-50179072" & analyte == "Basophils")
 ```
 
 ```{r gene length}
