@@ -1,7 +1,7 @@
 ---
 title: "locho_study"
 date: 2025.01.31
-author: 
+author:
  - Matt Jackson
  - Dayakar Badri
  - Artemis S. Louyakis
@@ -86,10 +86,10 @@ annots <- read.delim("annotations/trinotate_annotation_report.xls", header = TRU
 ## maps for uniprot, kegg
 uniprot_annots <- read.delim("/data/databases/uniprot/uniprotkb_AND_reviewed_true_2025_03_04.tsv", header = TRUE)
 ## kegg org:gene to uniprot map from kegg ftp
-kegg2entry <- read.delim("/data/databases/kegg/ftp.pathway.jp/kegg/genes/links/genes_uniprot.list", 
+kegg2entry <- read.delim("/data/databases/kegg/ftp.pathway.jp/kegg/genes/links/genes_uniprot.list",
                          header = FALSE, col.names = c("Kegg", "Entry"))
 ## kegg org:gene to KO id from kegg ftp
-kegg2ko <- read.delim("/data/databases/kegg/ftp.pathway.jp/kegg/genes/links/genes_ko.list", 
+kegg2ko <- read.delim("/data/databases/kegg/ftp.pathway.jp/kegg/genes/links/genes_ko.list",
                       header = FALSE, col.names = c("Kegg", "ko"))
 
 # ko_map <- read.delim("data/kegg_up_map.txt", header = FALSE) %>% rename(kegg = V1, ko = V2, gene = V3, uniprot = V4)
@@ -121,7 +121,7 @@ sd <- sample_data %>%
   distinct()
 
 rd <- results_data %>%
-  select(ck_number, animal_id, animal_name, tattoo_number, sample_type, matrix, 
+  select(ck_number, animal_id, animal_name, tattoo_number, sample_type, matrix,
          cp_phase, phase_day, analyte, standard_value, standard_unit) %>%
   unite("unique_id", c(animal_name, tattoo_number, cp_phase, phase_day)) %>%
   distinct()
@@ -130,7 +130,7 @@ rdw <- rd %>%
   pivot_wider(names_from = c(sample_type, matrix, analyte),
               values_from = c(standard_value, standard_unit))
 
-metadata %>% 
+metadata %>%
   select(mg, mt, diet_name)
 ```
 
@@ -138,7 +138,7 @@ metadata %>%
 Sys.time()
 
 ## aggregate counts by gene id when input is isoform table
-counts_lc <- counts_lc %>% 
+counts_lc <- counts_lc %>%
   mutate(X = gsub("_i[0-9]", "", X)) %>%
   group_by(X) %>%
   summarise(across(everything(), sum)) %>%
@@ -146,11 +146,11 @@ counts_lc <- counts_lc %>%
 ## filter gene lengths table to remove any not in counts table
 len <- len[match(rownames(counts_lc), len$gene_id, nomatch=0),]
 
-## normalize to gene length - 
+## normalize to gene length -
 counts_lc <- counts_lc %>%
-  merge(., len, by.x = 0, by.y = "gene_id") %>% 
+  merge(., len, by.x = 0, by.y = "gene_id") %>%
   column_to_rownames("Row.names") %>%
-  mutate_each(funs(./(length/1000)), starts_with("X")) %>% 
+  mutate_each(funs(./(length/1000)), starts_with("X")) %>%
   select(-length)
 ```
 
@@ -169,12 +169,12 @@ qual <- read.delim("quality/fastx_F-50179071-003S_r1_stats.csv", header = TRUE)
 
 ggplot(qual, aes(x = column, group = column)) +
   theme_bw() +
-  geom_boxplot(stat = "identity", color="darkgrey", fill="lightgrey", alpha=0.2, 
-    aes(lower = Q1, 
+  geom_boxplot(stat = "identity", color="darkgrey", fill="lightgrey", alpha=0.2,
+    aes(lower = Q1,
         upper = Q3,
         middle = mean,
         ymin = min,
-        ymax = max)) 
+        ymax = max))
 
 ggplot(qual, aes(x = column, y = mean)) +
   theme_bw() +
@@ -194,29 +194,29 @@ library(plyranges)
 
 blast_rslt <- read.table("annotations/blastx.outfmt6", header = FALSE, sep = "\t")
 
-colnames(blast_rslt) <- c("query", "sseqid", "pident", "length", "mismatch", "gapopen", 
+colnames(blast_rslt) <- c("query", "sseqid", "pident", "length", "mismatch", "gapopen",
                           "qstart", "qend", "sstart", "send", "evalue", "bitscore")
 
-test <- blast_rslt %>% dplyr::select(query, sseqid, qstart, qend, evalue) 
+test <- blast_rslt %>% dplyr::select(query, sseqid, qstart, qend, evalue)
 
-test <- test %>% 
+test <- test %>%
   mutate(i_start = case_when(qstart < qend ~ qstart,
                              qend < qstart ~ qend))
 
-test <- test %>% 
+test <- test %>%
   mutate(i_end = case_when(qstart < qend ~ qend,
                            qend < qstart ~ qstart))
 
-test <- test %>% 
-  mutate(strand = case_when(qstart < qend ~ "+", 
+test <- test %>%
+  mutate(strand = case_when(qstart < qend ~ "+",
                             qend < qstart ~ "-"))
 
-test <- test %>% 
+test <- test %>%
   select(query, sseqid, i_start, i_end, evalue, strand)
 
 colnames(test) <- c("query", "seqnames", "start", "end", "evalue", "strand")
 
-test_irange <- test %>% 
+test_irange <- test %>%
   as_granges()
 
 test_disjoin <- reduce(test_irange,with.revmap = TRUE)
@@ -225,7 +225,7 @@ list_revmap <- as.data.frame(mcols(test_disjoin))
 
 filtered_data <- c()
 for(i in 1:nrow(list_revmap)){
-  filtered_data <- c(filtered_data, (slice(list_revmap, i) %>% 
+  filtered_data <- c(filtered_data, (slice(list_revmap, i) %>%
                                        unlist(use.names=FALSE))[which.min(slice(test,  slice(list_revmap, i) %>%
                                                                                   unlist(use.names=FALSE))$evalue)])
 }
@@ -239,17 +239,17 @@ Sys.time()
 
 metaphlan <- readxl::read_excel("data/msystems.00452-24-s0004.xlsx")
 colnames(metaphlan) <- gsub("-005S|-004S|-003S|-002S", "", colnames(metaphlan))
-metaphlan <- metaphlan %>% 
+metaphlan <- metaphlan %>%
   column_to_rownames("Taxonomy\\Sample ID")
 
 # Define a function to create a table for a given taxonomic level
 create_taxa_table <- function(metaphlan, level) {
   level_names <- c("domain", "phylum", "class", "order", "family", "genus", "species")
   level_index <- match(level, level_names)
-  
+
   # Create a list of columns to remove based on the current level
   cols_to_remove <- level_names[(level_index + 1):length(level_names)]
-  
+
   metaphlan %>%
     rownames_to_column() %>%
     separate(col = "rowname", sep = "\\|", into = level_names, fill = "right") %>%
@@ -280,7 +280,7 @@ write.csv(species_table, "tables/metaphlan_species.csv", quote = FALSE)
 
 TODO: HIGH PRIORITY cluster analysis
 TODO: account for repeated measure with diet as main effect and order of diet as repeated measure
-TODO: WGCNA 
+TODO: WGCNA
 TODO: RLQ - which transcription factors controlling expression of each gene [Baty et al., 2013](https://pmc.ncbi.nlm.nih.gov/articles/PMC3686578/); [RLQ R tutorial](https://rfrelat.github.io/RLQ.html); [matt's google drive on rlq](https://drive.google.com/drive/folders/1BTs1d1G__SJJWVmdvMHpZJOLJmAZ16GO)
 
 ```{r session info}

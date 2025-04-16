@@ -1804,7 +1804,7 @@ library(tidyverse)</code></pre>
 <pre><code>Loading required package: data.table
 Registered S3 method overwritten by &#39;data.table&#39;:
   method           from
-  print.data.table     
+  print.data.table
 data.table 1.16.0 using 52 threads (see ?getDTthreads).  Latest news: r-datatable.com
 
 Attaching package: ‘data.table’
@@ -1924,7 +1924,7 @@ This is vegan 2.6-10</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-output-begin eyJkYXRhIjoiUmVnaXN0ZXJlZCBTMyBtZXRob2RzIG92ZXJ3cml0dGVuIGJ5ICdnZ3Rlcm4nOlxuICBtZXRob2QgICAgICAgICAgIGZyb20gICBcbiAgZ3JpZC5kcmF3LmdncGxvdCBnZ3Bsb3QyXG4gIHBsb3QuZ2dwbG90ICAgICAgZ2dwbG90MlxuICBwcmludC5nZ3Bsb3QgICAgIGdncGxvdDJcbi0tXG5SZW1lbWJlciB0byBjaXRlLCBydW4gY2l0YXRpb24ocGFja2FnZSA9ICdnZ3Rlcm4nKSBmb3IgZnVydGhlciBpbmZvLlxuLS1cblxuQXR0YWNoaW5nIHBhY2thZ2U6IOKAmGdndGVybuKAmVxuXG5UaGUgZm9sbG93aW5nIG9iamVjdHMgYXJlIG1hc2tlZCBmcm9tIOKAmHBhY2thZ2U6Z2dwbG90MuKAmTpcblxuICAgIGFlcywgYW5ub3RhdGUsIGdncGxvdCwgZ2dwbG90X2J1aWxkLCBnZ3Bsb3RfZ3RhYmxlLCBnZ3Bsb3RHcm9iLCBnZ3NhdmUsIGxheWVyX2RhdGEsIHRoZW1lX2J3LFxuICAgIHRoZW1lX2NsYXNzaWMsIHRoZW1lX2RhcmssIHRoZW1lX2dyYXksIHRoZW1lX2xpZ2h0LCB0aGVtZV9saW5lZHJhdywgdGhlbWVfbWluaW1hbCwgdGhlbWVfdm9pZFxuIn0= -->
 <pre><code>Registered S3 methods overwritten by &#39;ggtern&#39;:
-  method           from   
+  method           from
   grid.draw.ggplot ggplot2
   plot.ggplot      ggplot2
   print.ggplot     ggplot2
@@ -2079,7 +2079,7 @@ write.table(count_totals, &quot;tables/count_totals.csv&quot;, quote = FALSE, co
 <pre class="r"><code>Sys.time()
 
 ## aggregate counts by gene id when input is isoform table
-counts_lc &lt;- counts_lc %&gt;% 
+counts_lc &lt;- counts_lc %&gt;%
   mutate(X = gsub(&quot;_i[0-9]&quot;, &quot;&quot;, X)) %&gt;%
   group_by(X) %&gt;%
   summarise(across(everything(), sum)) %&gt;%
@@ -2087,11 +2087,11 @@ counts_lc &lt;- counts_lc %&gt;%
 ## filter gene lengths table to remove any not in counts table
 len &lt;- len[match(rownames(counts_lc), len$gene_id, nomatch=0),]
 
-## normalize to gene length - 
+## normalize to gene length -
 counts_lc &lt;- counts_lc %&gt;%
-  merge(., len, by.x = 0, by.y = &quot;gene_id&quot;) %&gt;% 
+  merge(., len, by.x = 0, by.y = &quot;gene_id&quot;) %&gt;%
   column_to_rownames(&quot;Row.names&quot;) %&gt;%
-  mutate_each(funs(./(length/1000)), starts_with(&quot;X&quot;)) %&gt;% 
+  mutate_each(funs(./(length/1000)), starts_with(&quot;X&quot;)) %&gt;%
   select(-length)</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-output-end -->
@@ -2122,12 +2122,12 @@ qual &lt;- read.delim(&quot;quality/fastx_F-50179071-003S_r1_stats.csv&quot;, he
 
 ggplot(qual, aes(x = column, group = column)) +
   theme_bw() +
-  geom_boxplot(stat = &quot;identity&quot;, color=&quot;darkgrey&quot;, fill=&quot;lightgrey&quot;, alpha=0.2, 
-    aes(lower = Q1, 
+  geom_boxplot(stat = &quot;identity&quot;, color=&quot;darkgrey&quot;, fill=&quot;lightgrey&quot;, alpha=0.2,
+    aes(lower = Q1,
         upper = Q3,
         middle = mean,
         ymin = min,
-        ymax = max)) 
+        ymax = max))
 
 ggplot(qual, aes(x = column, y = mean)) +
   theme_bw() +
@@ -2153,29 +2153,29 @@ library(plyranges)
 
 blast_rslt &lt;- read.table(&quot;annotations/blastx.outfmt6&quot;, header = FALSE, sep = &quot;\t&quot;)
 
-colnames(blast_rslt) &lt;- c(&quot;query&quot;, &quot;sseqid&quot;, &quot;pident&quot;, &quot;length&quot;, &quot;mismatch&quot;, &quot;gapopen&quot;, 
+colnames(blast_rslt) &lt;- c(&quot;query&quot;, &quot;sseqid&quot;, &quot;pident&quot;, &quot;length&quot;, &quot;mismatch&quot;, &quot;gapopen&quot;,
                           &quot;qstart&quot;, &quot;qend&quot;, &quot;sstart&quot;, &quot;send&quot;, &quot;evalue&quot;, &quot;bitscore&quot;)
 
-test &lt;- blast_rslt %&gt;% dplyr::select(query, sseqid, qstart, qend, evalue) 
+test &lt;- blast_rslt %&gt;% dplyr::select(query, sseqid, qstart, qend, evalue)
 
-test &lt;- test %&gt;% 
+test &lt;- test %&gt;%
   mutate(i_start = case_when(qstart &lt; qend ~ qstart,
                              qend &lt; qstart ~ qend))
 
-test &lt;- test %&gt;% 
+test &lt;- test %&gt;%
   mutate(i_end = case_when(qstart &lt; qend ~ qend,
                            qend &lt; qstart ~ qstart))
 
-test &lt;- test %&gt;% 
-  mutate(strand = case_when(qstart &lt; qend ~ &quot;+&quot;, 
+test &lt;- test %&gt;%
+  mutate(strand = case_when(qstart &lt; qend ~ &quot;+&quot;,
                             qend &lt; qstart ~ &quot;-&quot;))
 
-test &lt;- test %&gt;% 
+test &lt;- test %&gt;%
   select(query, sseqid, i_start, i_end, evalue, strand)
 
 colnames(test) &lt;- c(&quot;query&quot;, &quot;seqnames&quot;, &quot;start&quot;, &quot;end&quot;, &quot;evalue&quot;, &quot;strand&quot;)
 
-test_irange &lt;- test %&gt;% 
+test_irange &lt;- test %&gt;%
   as_granges()
 
 test_disjoin &lt;- reduce(test_irange,with.revmap = TRUE)
@@ -2184,7 +2184,7 @@ list_revmap &lt;- as.data.frame(mcols(test_disjoin))
 
 filtered_data &lt;- c()
 for(i in 1:nrow(list_revmap)){
-  filtered_data &lt;- c(filtered_data, (slice(list_revmap, i) %&gt;% 
+  filtered_data &lt;- c(filtered_data, (slice(list_revmap, i) %&gt;%
                                        unlist(use.names=FALSE))[which.min(slice(test,  slice(list_revmap, i) %&gt;%
                                                                                   unlist(use.names=FALSE))$evalue)])
 }
@@ -2206,17 +2206,17 @@ multimedia</h2>
 
 metaphlan &lt;- readxl::read_excel(&quot;data/msystems.00452-24-s0004.xlsx&quot;)
 colnames(metaphlan) &lt;- gsub(&quot;-005S|-004S|-003S|-002S&quot;, &quot;&quot;, colnames(metaphlan))
-metaphlan &lt;- metaphlan %&gt;% 
+metaphlan &lt;- metaphlan %&gt;%
   column_to_rownames(&quot;Taxonomy\\Sample ID&quot;)
 
 # Define a function to create a table for a given taxonomic level
 create_taxa_table &lt;- function(metaphlan, level) {
   level_names &lt;- c(&quot;domain&quot;, &quot;phylum&quot;, &quot;class&quot;, &quot;order&quot;, &quot;family&quot;, &quot;genus&quot;, &quot;species&quot;)
   level_index &lt;- match(level, level_names)
-  
+
   # Create a list of columns to remove based on the current level
   cols_to_remove &lt;- level_names[(level_index + 1):length(level_names)]
-  
+
   metaphlan %&gt;%
     rownames_to_column() %&gt;%
     separate(col = &quot;rowname&quot;, sep = &quot;\\|&quot;, into = level_names, fill = &quot;right&quot;) %&gt;%
