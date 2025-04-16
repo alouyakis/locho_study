@@ -194,7 +194,8 @@ this method is less reproducible
 ```bash
 ## filter sample data by sample ids
 awk -F":" '{print $1}' ${tables}/filt_paired_fwd.csv | sed 's/filtered\///g;s/_trimmed-pair_R1.fastq.gz//g' > ${data}/sampleids.tmp
-grep -Ff data/sampleids.tmp ${data}/locho_105536_sample_data.tsv > ${data}/filtered_locho_105536_sample_data.tsv
+# head -n 1 ${data}/locho_105536_sample_data.tsv > ${data}/filtered_locho_105536_sample_data.tsv
+grep -Ff data/sampleids.tmp ${data}/locho_105536_sample_data.tsv >> ${data}/filtered_locho_105536_sample_data.tsv
 
 ## create temp files for each column
 awk -F"\t" '{OFS="\t"}{print $4,$28,$29}' ${data}/filtered_locho_105536_sample_data.tsv | sort | sed 's/Pre-Feed\t/prefeed_/g;s/Treatment (test)\t/treatment_/g' | awk -F"\t" '{print $2}' > ${data}/col1.tmp
@@ -458,16 +459,28 @@ gzip annotations/blast*
 # 4.0K	locho_study.Rproj
 # 12K	mgmt_analysis.md
 # 1.3T	nohost
+rm nohost/*.bam.gz
+rm nohost/*.sam.gz
 # 4.0K	plots
 # 131M	quality
 # 4.0K	README.md
 # 24M	scripts
 # 411G	sortmerna
+rm -r sortmerna/F-50179*
 # 323G	spades
+for i in spades/*; do rm -r ${i}/K*; done
+for i in spades/*; do rm -r ${i}/corrected/; done
 # 660K	tables
 # 0	TMHMM_194952
 # 0	tmp
 # 126G	trinity_out
+rm -r trinity_out/both.fa*
+rm -r trinity_out/inchworm.*
+rm -r trinity_out/jellyfish.kmers.fa*
+rm -r trinity_out/partitioned_reads.files.list*
+rm -r trinity_out/recursive_trinity.cmds*
+rm trinity_out/left.fa.ok
+rm trinity_out/right.fa.ok
 ```
 
 
