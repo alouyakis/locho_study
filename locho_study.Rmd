@@ -8,6 +8,8 @@ author:
 output: html_notebook
 ---
 
+Study included 35 dogs each fed an identical pre-feed diet for 27 days (P-27), followed by feeding either a high protein diet or a high fat diet for ~35 days (T-34), then switched to the opposite diet for ~35 days (T-69).
+
 Load packages used in the analysis
 ```{r load packages}
 Sys.time()
@@ -106,26 +108,31 @@ mg_metadata <- read.delim("data/mg_metadata.csv") %>%
   rename_with(~ tolower(gsub(".", "_", .x, fixed = TRUE))) %>%
   mutate(mg = sub("^([^-]*-[^-]*).*", "\\1", metagenomics_sample_number))
 
+mt_metadata <- read.delim("data/mt_sample_data.txt") %>%
+  rename_with(~ tolower(gsub(".", "_", .x, fixed = TRUE))) %>%
+  mutate(mt = sub("^([^-]*-[^-]*).*", "\\1", sample_number)) %>%
+  filter(mt != "F-50179103") ## MONSTER only sampled for single time point
+
 mgmt_map <- read.delim("data/bb4_mtmg_map.tsv") %>%
   rename(mt_full = X.mt, mg_full = mg) %>%
   mutate(mg = sub("^([^-]*-[^-]*).*", "\\1", mg_full),
          mt = sub("^([^-]*-[^-]*).*", "\\1", mt_full))
 
-sample_data <- read.delim("data/locho_105536_sample_data.tsv")
-results_data <- read.delim("data/locho_105536_results_data.tsv")
+# sample_data <- read.delim("data/locho_105536_sample_data.tsv")
+# results_data <- read.delim("data/locho_105536_results_data.tsv")
 
 metadata <- merge(mg_metadata, mgmt_map, by = "mg", all = TRUE) %>%
-  drop_na(mt)
+  merge(., mt_metadata, by = "mt", all = TRUE)
 
-sd <- sample_data %>%
-  select(ck_number, animal_id, sample_type, cp_phase, test_day) %>%
-  distinct()
-
-rd <- results_data %>%
-  select(ck_number, animal_id, animal_name, tattoo_number, sample_type, matrix,
-         cp_phase, phase_day, analysis_method, operating_set, analyte, standard_value, standard_unit) %>%
-  unite("unique_id", c(animal_name, tattoo_number, cp_phase, phase_day)) %>%
-  distinct()
+# sd <- sample_data %>%
+#   select(ck_number, animal_id, sample_type, cp_phase, test_day) %>%
+#   distinct()
+# 
+# rd <- results_data %>%
+#   select(ck_number, animal_id, animal_name, tattoo_number, sample_type, matrix,
+#          cp_phase, phase_day, analysis_method, operating_set, analyte, standard_value, standard_unit) %>%
+#   unite("unique_id", c(animal_name, tattoo_number, cp_phase, phase_day)) %>%
+#   distinct()
 
 # rdw <- rd %>%
 #   pivot_wider(names_from = c(sample_type, matrix, analysis_method, operating_set, analyte),
@@ -144,21 +151,15 @@ rd <- results_data %>%
 #   filter(ck_number == "B-50179072" & analyte == "Basophils")
 ```
 
-```{r gene length}
+```{r gene length normalization}
 Sys.time()
 
-## aggregate counts by gene id when input is isoform table
-counts_lc <- counts_lc %>% 
-  mutate(X = gsub("_i[0-9]", "", X)) %>%
-  group_by(X) %>%
-  summarise(across(everything(), sum)) %>%
-  column_to_rownames("X")
 ## filter gene lengths table to remove any not in counts table
-len <- len[match(rownames(counts_lc), len$gene_id, nomatch=0),]
+len <- len[match(rownames(counts), len$transcript_id, nomatch=0),]
 
 ## normalize to gene length - 
-counts_lc <- counts_lc %>%
-  merge(., len, by.x = 0, by.y = "gene_id") %>% 
+rpk <- counts %>%
+  merge(., len, by.x = 0, by.y = "transcript_id") %>% 
   column_to_rownames("Row.names") %>%
   mutate_each(funs(./(length/1000)), starts_with("X")) %>% 
   select(-length)
