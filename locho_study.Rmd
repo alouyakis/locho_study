@@ -18,6 +18,8 @@ library(tidyr)
 library(tidyverse)
 library(edgeR)
 library(trinotateR)
+library(DESeq2)
+library(DEGreport)
 library(NOISeq)
 library(manhattanly)
 library(cowplot)
@@ -73,6 +75,17 @@ count_totals <- as.data.frame(colSums(counts))
 write.table(count_totals, "tables/count_totals.csv", quote = FALSE, col.names = FALSE)
 ```
 
+one sample - F-50179103 - was mistakingly sequenced
+```{r remove sample}
+Sys.time()
+
+counts <- counts %>%
+  select(-mrna_F.50179103.003S)
+tpm <- tpm %>%
+  select(-mrna_F.50179103.003S)
+```
+
+
 import annotations and mapping files
 ```{r import annotations}
 Sys.time()
@@ -86,13 +99,22 @@ len <- read.delim("data/isoform_length.txt")
 trinotate <- read.delim("annotations/trinotate_annotation_report.xls", header = TRUE)
 
 ## maps for uniprot, kegg
-uniprot_annots <- read.delim("/data/databases/uniprot/uniprotkb_AND_reviewed_true_2025_03_04.tsv", header = TRUE)
+uniprot_map <- read.delim("/data/databases/uniprot/uniprotkb_AND_reviewed_true_2025_03_04.tsv", header = TRUE)
 ## kegg org:gene to uniprot map from kegg ftp
 kegg2entry <- read.delim("/data/databases/kegg/ftp.pathway.jp/kegg/genes/links/genes_uniprot.list", 
                          header = FALSE, col.names = c("Kegg", "Entry"))
 ## kegg org:gene to KO id from kegg ftp
 kegg2ko <- read.delim("/data/databases/kegg/ftp.pathway.jp/kegg/genes/links/genes_ko.list", 
                       header = FALSE, col.names = c("Kegg", "ko"))
+## housekeeping for maps
+## kegg org:gene id to uniprot Entry id
+kegg2entry %>% 
+  mutate(Entry = gsub("up:", "", Entry)) -> kegg2entry
+## kegg org:gene id to ko id
+kegg2ko %>% 
+  mutate(ko = gsub("ko:", "", ko)) -> kegg2ko
+## uniprot Entry.Name mapped to uniprot Entry
+uniprot_map[,c("Entry", "Entry.Name")] %>% head()
 
 # ko_map <- read.delim("data/kegg_up_map.txt", header = FALSE) %>% rename(kegg = V1, ko = V2, gene = V3, uniprot = V4)
 # khier <- read.delim("data/khier_ko.txt", header = FALSE) %>% rename(level1 = V1, level2 = V2, level3 = V3, ko = V4, ko_name = V5) %>% unique()
@@ -116,13 +138,18 @@ mt_metadata <- read.delim("data/mt_sample_data.txt") %>%
 mgmt_map <- read.delim("data/bb4_mtmg_map.tsv") %>%
   rename(mt_full = X.mt, mg_full = mg) %>%
   mutate(mg = sub("^([^-]*-[^-]*).*", "\\1", mg_full),
-         mt = sub("^([^-]*-[^-]*).*", "\\1", mt_full))
+         mt = sub("^([^-]*-[^-]*).*", "\\1", mt_full)) %>%
+  filter(mt != "F-50179103")
 
 # sample_data <- read.delim("data/locho_105536_sample_data.tsv")
 # results_data <- read.delim("data/locho_105536_results_data.tsv")
 
 metadata <- merge(mg_metadata, mgmt_map, by = "mg", all = TRUE) %>%
-  merge(., mt_metadata, by = "mt", all = TRUE)
+  merge(., mt_metadata, by = "mt", all = TRUE) %>%
+  mutate(mt_id = sub("-", ".", paste0("mrna_", mt, ".003S"))) %>% ## to match counts table ids
+  mutate(sample_id = sub("-", ".", paste0("mrna_", mt, ".003S"))) %>%
+  relocate(sample_id, .before = everything()) %>%
+  mutate(treatment = paste0(time_point, "_", diet_name))
 
 # sd <- sample_data %>%
 #   select(ck_number, animal_id, sample_type, cp_phase, test_day) %>%
@@ -161,49 +188,187 @@ len <- len[match(rownames(counts), len$transcript_id, nomatch=0),]
 rpk <- counts %>%
   merge(., len, by.x = 0, by.y = "transcript_id") %>% 
   column_to_rownames("Row.names") %>%
-  mutate_each(funs(./(length/1000)), starts_with("X")) %>% 
+  # mutate_each(funs(./(length/1000)), starts_with("mrna")) %>% 
+  mutate(across(c(where(is.numeric), -length), ~ ./(length/1000))) %>%
   select(-length)
 ```
 
-```{r aggregate counts by function}
+filter annotations to get best hits for blastx and blastp
+step 1: if no hit for blastx or blastp, remove
+step 2: if blastx has a hit, use that first (blastx pre-filtered for best hit)
+step 3: if blastx has no hit and blastp has a hit, filter for best blastp hit
+step 4: combine blastx with filtered blastp
+
+```{r make uniprot best hits map}
 Sys.time()
 
-## annotation processing:
-  ## blastx
-
-## create uniprot map from trinotate annotation table
-trinotate_up <- trinotate %>% 
-  select(transcript_id, sprot_Top_BLASTX_hit, sprot_Top_BLASTP_hit) %>%
+trinotate_x <- trinotate %>% 
+  filter(sprot_Top_BLASTX_hit != ".") %>%
+  select(transcript_id, sprot_Top_BLASTX_hit) %>%
+  distinct() %>%
   separate(sprot_Top_BLASTX_hit, into = c("uniprot"), sep = "\\^", extra = "drop", remove = FALSE, fill = "right") %>%
-  separate(sprot_Top_BLASTP_hit, into = c("uniprotp"), sep = "\\^", extra = "drop", remove = FALSE, fill = "right") %>%
-  mutate(uniprot = str_replace(uniprot, '\\.', '')) %>%
-  mutate(uniprotp = str_replace(uniprotp, '\\.', '')) %>%
-  mutate(uniprot = ifelse(uniprot %in% "", uniprotp, uniprot)) %>%
   separate(uniprot, into = c(NA, "entry", "entry_name"), sep = "\\|", extra = "drop", remove = FALSE, fill = "right") %>%
-  filter(entry!="") %>%
-  select(transcript_id, entry, entry_name) %>%
-  distinct()
+  select(transcript_id, entry, entry_name)
+
+tmp <- trinotate %>%
+  filter(sprot_Top_BLASTX_hit == "." & sprot_Top_BLASTP_hit != ".")
+
+trinotate_p <- trinotate %>%
+  filter(sprot_Top_BLASTX_hit == "." & sprot_Top_BLASTP_hit != ".") %>%
+  select(transcript_id, sprot_Top_BLASTP_hit) %>%
+  distinct() %>%
+  separate(sprot_Top_BLASTP_hit, into = c("uniprot", NA, NA, NA, "evalue"),
+           sep = "\\^", extra = "drop", remove = FALSE, fill = "right") %>%
+  mutate(evalue = as.numeric(str_replace(evalue, 'E:', ''))) %>%
+  separate(uniprot, into = c(NA, "entry", "entry_name"), sep = "\\|", extra = "drop", remove = FALSE, fill = "right") %>%
+  select(transcript_id, entry, entry_name, evalue) %>%
+  group_by(transcript_id) %>%
+  arrange(evalue) %>%
+  slice_head(n = 1) %>%
+  anti_join(., trinotate_x, by = "transcript_id") %>%
+  select(transcript_id, entry, entry_name)
+
+trinotate_up <- bind_rows(trinotate_x, trinotate_p) %>%
+  distinct() %>%
+  group_by(transcript_id) %>%
+  slice_head(n = 1) %>%
+  ungroup()
+
+trinotate_up_all <- bind_rows(trinotate_x, trinotate_p) %>%
+  distinct() %>%
+  group_by(transcript_id) %>%
+  ungroup()
+
+### old method:
+## create uniprot map from trinotate annotation table
+# trinotate_up <- trinotate %>% 
+#   select(transcript_id, sprot_Top_BLASTX_hit, sprot_Top_BLASTP_hit) %>%
+#   separate(sprot_Top_BLASTX_hit, into = c("uniprot"), sep = "\\^", extra = "drop", remove = FALSE, fill = "right") %>%
+#   separate(sprot_Top_BLASTP_hit, into = c("uniprotp"), sep = "\\^", extra = "drop", remove = FALSE, fill = "right") %>%
+#   mutate(uniprot = str_replace(uniprot, '\\.', '')) %>%
+#   mutate(uniprotp = str_replace(uniprotp, '\\.', '')) %>%
+#   mutate(uniprot = ifelse(uniprot %in% "", uniprotp, uniprot)) %>%
+#   separate(uniprot, into = c(NA, "entry", "entry_name"), sep = "\\|", extra = "drop", remove = FALSE, fill = "right") %>%
+#   filter(entry!="") %>%
+#   select(transcript_id, entry, entry_name) %>%
+#   distinct()
+```
+
+```{r run checks on trinotate}
+Sys.time()
+
+trinotate %>%
+  select(X.gene_id) %>%
+  unique() %>%
+  nrow() -> ag
+cat("Total # of genes:", ag, "\n")
+
+trinotate %>%
+  select(transcript_id) %>%
+  unique() %>%
+  nrow() -> ai
+cat("Total # of isoforms:", ai, "\n")
+
+trinotate %>%
+  select(prot_id) %>%
+  unique() %>%
+  nrow() -> ap
+cat("Total # of proteins:", ap, "\n")
+
+trinotate %>% 
+  filter(sprot_Top_BLASTX_hit != "." | sprot_Top_BLASTP_hit != ".") %>% 
+  nrow() -> b
+cat("Total # with blastx or blastp hit:", b, "\n")
+
+trinotate %>% 
+  filter(sprot_Top_BLASTX_hit == "." & sprot_Top_BLASTP_hit == ".") %>%
+  nrow() -> c
+cat("Total # with no blast hit:", c, "\n")
+
+trinotate %>% 
+  filter(sprot_Top_BLASTX_hit != "." & sprot_Top_BLASTP_hit != ".") %>%
+  nrow() -> d
+cat("Total # with both blastx and blastp hit:", d, "\n")
+
+trinotate %>% 
+  filter(sprot_Top_BLASTX_hit != "." & sprot_Top_BLASTP_hit == ".") %>%
+  nrow() -> e
+cat("Total # with only blastx hit:", e, "\n")
+
+trinotate %>% 
+  filter(sprot_Top_BLASTX_hit == "." & sprot_Top_BLASTP_hit != ".") %>%
+  nrow() -> f
+cat("Total # with only blastp hit:", f, "\n")
+
+x <- read_trinotate("annotations/trinotate_annotation_report.xls")
+summary_trinotate(x)
+
+rm(ag, ai, ap, b, c, d, e, f, x)
+```
+
+sum by function
+```{r aggregate counts by up}
+Sys.time()
 
 ## merge counts with uniprot
 counts_up <- merge(trinotate_up, counts, by.x = "transcript_id", by.y = "row.names") %>%
   select(!c(entry_name, transcript_id)) %>%
   group_by(entry) %>%
-  mutate(across(where(is.numeric), ~ sum(.x, na.rm = TRUE)))
+  summarize(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) %>%
+  column_to_rownames(var = "entry")
 
 tpm_up <- merge(trinotate_up, tpm, by.x = "transcript_id", by.y = "row.names") %>%
   select(!c(entry_name, transcript_id)) %>%
   group_by(entry) %>%
-  mutate(across(where(is.numeric), ~ sum(.x, na.rm = TRUE)))
+  summarize(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) %>%
+  column_to_rownames(var = "entry")
 
 rpk_up <- merge(trinotate_up, rpk, by.x = "transcript_id", by.y = "row.names") %>%
   select(!c(entry_name, transcript_id)) %>%
   group_by(entry) %>%
-  mutate(across(where(is.numeric), ~ sum(.x, na.rm = TRUE)))
+  summarize(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) %>%
+  column_to_rownames(var = "entry")
 
 ## get counts by sample for uniprot annotated 
-track_counts <- colSums(counts_up)
+track_counts <- merge(data.frame(colSums(counts_up)), data.frame(colSums(rpk_up)), by = "row.names") %>%
+  merge(., data.frame(colSums(tpm_up)), by.x = "Row.names", by.y = "row.names")
 ```
 
+```{r aggregate counts by kegg}
+Sys.time() 
+
+counts_ko <- counts_up %>%
+  merge(., kegg2entry, by.x = 0, by.y = "Entry") %>%
+  merge(., kegg2ko, by = "Kegg") %>% 
+  select(!c(Row.names, Kegg)) %>%
+  drop_na(ko) %>%
+  group_by(ko) %>%
+  summarise(across(everything(), sum)) %>%
+  column_to_rownames("ko")
+
+tpm_ko <- tpm_up %>%
+  merge(., kegg2entry, by.x = 0, by.y = "Entry") %>%
+  merge(., kegg2ko, by = "Kegg") %>% 
+  select(!c(Row.names, Kegg)) %>%
+  drop_na(ko) %>%
+  group_by(ko) %>%
+  summarise(across(everything(), sum)) %>%
+  column_to_rownames("ko")
+
+rpk_ko <- rpk_up %>%
+  merge(., kegg2entry, by.x = 0, by.y = "Entry") %>%
+  merge(., kegg2ko, by = "Kegg") %>% 
+  select(!c(Row.names, Kegg)) %>%
+  drop_na(ko) %>%
+  group_by(ko) %>%
+  summarise(across(everything(), sum)) %>%
+  column_to_rownames("ko")
+
+## get counts by sample for uniprot annotated 
+track_counts <- merge(track_counts, data.frame(colSums(counts_ko)), by.x = "Row.names", by.y = "row.names") %>%
+  merge(., data.frame(colSums(rpk_ko)), by.x = "Row.names", by = "row.names") %>%
+  merge(., data.frame(colSums(tpm_ko)), by.x = "Row.names", by.y = "row.names")
+```
 
 ## cluster
 ```{r clustering}
@@ -212,9 +377,9 @@ Sys.time()
 ## clustering method suggested by Pariksheet
 # https://hbctraining.github.io/DGE_workshop/lessons/08_DGE_LRT.html
 
-count_data <- round(humann_ko, 0)
+count_data <- round(tpm_ko, 0)
 # count_data <- count_data[rowSums(count_data) > 10,]
-dds <- DESeqDataSetFromMatrix(countData = count_data, colData = metadata, design = ~ phase_day)
+dds <- DESeqDataSetFromMatrix(countData = count_data, colData = metadata, design = ~ treatment)
 # Wald test
 # dds_wald <- DESeq(dds, test="Wald")
 
@@ -247,7 +412,7 @@ length(sigLRT_genes)
 vst <- varianceStabilizingTransformation(dds, blind = TRUE) ## error from vst suggested using directly "less than 'nsub' rows with mean normalized count > 5"
 
 # Plot PCA 
-plotPCA(vst, intgroup = "phase_day")
+plotPCA(vst, intgroup = "treatment")
 
 # Extract the rlog matrix from the object
 vst_mat <- assay(vst)
@@ -265,18 +430,18 @@ pheatmap(vst_cor)
 # clusters <- degPatterns(cluster_rlog, metadata = metadata, time = "time_food", col = NULL, minc = 1)
 
 ## cluster all genes instead of the top 1000
-metadata2 <- metadata %>% 
-  column_to_rownames(var = "sample_id")
+metadata2 <- metadata %>%
+  column_to_rownames(var = "mt_id")
 cluster_vst_all <- vst_mat[sig_res_LRT$gene, ]
-cluster_all <- degPatterns(cluster_vst_all, metadata = metadata2, time = "day", col = "phase", minc = 1)
+cluster_all <- degPatterns(cluster_vst_all, metadata = metadata2, time = "time_point", col = "diet_name", minc = 1)
 
 #### ggplot manually
 ggplot(cluster_all$plot$data) +
-  geom_line(aes(x = phase_day, y = value, group = genes), color = "grey") +
-  geom_point(position = "jitter", aes(x = phase_day, y = value, 
-                                    alpha = 0.2, color = phase
+  geom_line(aes(x = treatment, y = value, group = genes), color = "grey") +
+  geom_point(position = "jitter", aes(x = treatment, y = value, 
+                                    alpha = 0.2, color = diet_name
                                     )) +
-  geom_boxplot(aes(x = phase_day, y = value, color = phase,
+  geom_boxplot(aes(x = treatment, y = value, color = diet_name,
                    alpha = 0.2
                    )) +
   theme_bw() +
@@ -287,7 +452,7 @@ ggplot(cluster_all$plot$data) +
   theme(plot.title = element_text(size = 16)) +
   facet_wrap(~title, ncol = 4)
 # ggsave("plots/cluster.pdf", height = 20, width = 14)
-ggsave("clustering/clusters.png", height = 14, width = 14, create.dir = TRUE)
+ggplot2::ggsave("plots/clustering/clusters.png", height = 14, width = 14, create.dir = TRUE)
 
 # extract the group 3 genes
 # cluster_groups <- cluster_all$df
@@ -297,7 +462,7 @@ ggsave("clustering/clusters.png", height = 14, width = 14, create.dir = TRUE)
 dfs <- split(cluster_all$df, cluster_all$df$cluster) # list of dfs
 # use numbers as file names
 lapply(names(dfs),
-       function(x){write.csv(dfs[[x]], paste0("clustering/kegg_", x,".csv"),
+       function(x){write.csv(dfs[[x]], paste0("tables/cluster_kegg_", x,".csv"),
                              row.names = FALSE)})
 ```
 
