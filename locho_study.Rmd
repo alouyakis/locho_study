@@ -83,7 +83,7 @@ Sys.time()
 len <- read.delim("data/isoform_length.txt")
 
 ## trinotate annotations cutoff - 10e-3
-annots <- read.delim("annotations/trinotate_annotation_report.xls", header = TRUE)
+trinotate <- read.delim("annotations/trinotate_annotation_report.xls", header = TRUE)
 
 ## maps for uniprot, kegg
 uniprot_annots <- read.delim("/data/databases/uniprot/uniprotkb_AND_reviewed_true_2025_03_04.tsv", header = TRUE)
@@ -165,11 +165,140 @@ rpk <- counts %>%
   select(-length)
 ```
 
+```{r aggregate counts by function}
+Sys.time()
+
+## annotation processing:
+  ## blastx
+
+## create uniprot map from trinotate annotation table
+trinotate_up <- trinotate %>% 
+  select(transcript_id, sprot_Top_BLASTX_hit, sprot_Top_BLASTP_hit) %>%
+  separate(sprot_Top_BLASTX_hit, into = c("uniprot"), sep = "\\^", extra = "drop", remove = FALSE, fill = "right") %>%
+  separate(sprot_Top_BLASTP_hit, into = c("uniprotp"), sep = "\\^", extra = "drop", remove = FALSE, fill = "right") %>%
+  mutate(uniprot = str_replace(uniprot, '\\.', '')) %>%
+  mutate(uniprotp = str_replace(uniprotp, '\\.', '')) %>%
+  mutate(uniprot = ifelse(uniprot %in% "", uniprotp, uniprot)) %>%
+  separate(uniprot, into = c(NA, "entry", "entry_name"), sep = "\\|", extra = "drop", remove = FALSE, fill = "right") %>%
+  filter(entry!="") %>%
+  select(transcript_id, entry, entry_name) %>%
+  distinct()
+
+## merge counts with uniprot
+counts_up <- merge(trinotate_up, counts, by.x = "transcript_id", by.y = "row.names") %>%
+  select(!c(entry_name, transcript_id)) %>%
+  group_by(entry) %>%
+  mutate(across(where(is.numeric), ~ sum(.x, na.rm = TRUE)))
+
+tpm_up <- merge(trinotate_up, tpm, by.x = "transcript_id", by.y = "row.names") %>%
+  select(!c(entry_name, transcript_id)) %>%
+  group_by(entry) %>%
+  mutate(across(where(is.numeric), ~ sum(.x, na.rm = TRUE)))
+
+rpk_up <- merge(trinotate_up, rpk, by.x = "transcript_id", by.y = "row.names") %>%
+  select(!c(entry_name, transcript_id)) %>%
+  group_by(entry) %>%
+  mutate(across(where(is.numeric), ~ sum(.x, na.rm = TRUE)))
+
+## get counts by sample for uniprot annotated 
+track_counts <- colSums(counts_up)
+```
+
+
 ## cluster
 ```{r clustering}
 Sys.time()
 
+## clustering method suggested by Pariksheet
+# https://hbctraining.github.io/DGE_workshop/lessons/08_DGE_LRT.html
 
+count_data <- round(humann_ko, 0)
+# count_data <- count_data[rowSums(count_data) > 10,]
+dds <- DESeqDataSetFromMatrix(countData = count_data, colData = metadata, design = ~ phase_day)
+# Wald test
+# dds_wald <- DESeq(dds, test="Wald")
+
+# Likelihood ratio test
+dds_lrt <- DESeq(dds, test="LRT", reduced = ~ 1)
+# Extract results
+res_LRT <- results(dds_lrt)
+
+# Subset the LRT results to return genes with padj < 0.05 or pvalue < 0.05
+sig_res_LRT <- res_LRT %>%
+               data.frame() %>%
+               rownames_to_column(var = "gene") %>% 
+               as_tibble() %>% 
+               filter(pvalue < 0.05)
+
+# Get sig gene lists
+sigLRT_genes <- sig_res_LRT %>% 
+                pull(gene)
+                
+length(sigLRT_genes)
+
+# Subset results for faster cluster finding (for classroom demo purposes)
+# clustering_sig_genes <- sig_res_LRT %>%
+#                   arrange(pvalue) %>%
+#                   head(n=1000)
+
+# Transform counts for data visualization
+# rld <- rlog(dds, blind=TRUE)
+# vst <- vst(dds, blind = TRUE) ## faster transformation to try 2024.07.02
+vst <- varianceStabilizingTransformation(dds, blind = TRUE) ## error from vst suggested using directly "less than 'nsub' rows with mean normalized count > 5"
+
+# Plot PCA 
+plotPCA(vst, intgroup = "phase_day")
+
+# Extract the rlog matrix from the object
+vst_mat <- assay(vst)
+
+# Compute pairwise correlation values
+vst_cor <- cor(vst_mat)
+
+# Plot heatmap
+pheatmap(vst_cor)
+
+# Obtain rlog values for those significant genes
+# cluster_rlog <- rld_mat[clustering_sig_genes$gene, ]
+
+# Use the `degPatterns` function from the 'DEGreport' package to show gene clusters across sample groups
+# clusters <- degPatterns(cluster_rlog, metadata = metadata, time = "time_food", col = NULL, minc = 1)
+
+## cluster all genes instead of the top 1000
+metadata2 <- metadata %>% 
+  column_to_rownames(var = "sample_id")
+cluster_vst_all <- vst_mat[sig_res_LRT$gene, ]
+cluster_all <- degPatterns(cluster_vst_all, metadata = metadata2, time = "day", col = "phase", minc = 1)
+
+#### ggplot manually
+ggplot(cluster_all$plot$data) +
+  geom_line(aes(x = phase_day, y = value, group = genes), color = "grey") +
+  geom_point(position = "jitter", aes(x = phase_day, y = value, 
+                                    alpha = 0.2, color = phase
+                                    )) +
+  geom_boxplot(aes(x = phase_day, y = value, color = phase,
+                   alpha = 0.2
+                   )) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  theme(legend.position = "none") +
+  labs(x = NULL, y = "scaled expression", title = "Clustered Kegg Orthologs") +
+  theme(text = element_text(size=16), axis.text.x = element_text(size  = 16, angle = 90, hjust = 1, vjust = 1)) +
+  theme(plot.title = element_text(size = 16)) +
+  facet_wrap(~title, ncol = 4)
+# ggsave("plots/cluster.pdf", height = 20, width = 14)
+ggsave("clustering/clusters.png", height = 14, width = 14, create.dir = TRUE)
+
+# extract the group 3 genes
+# cluster_groups <- cluster_all$df
+# group3 <- cluster_all$df %>%
+#             filter(cluster == 3)
+
+dfs <- split(cluster_all$df, cluster_all$df$cluster) # list of dfs
+# use numbers as file names
+lapply(names(dfs),
+       function(x){write.csv(dfs[[x]], paste0("clustering/kegg_", x,".csv"),
+                             row.names = FALSE)})
 ```
 
 ## plotting quality not needed if running fastqc
