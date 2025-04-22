@@ -462,9 +462,9 @@ ggplot(plot_data) +
   labs(x = NULL, y = "scaled expression", title = "Clustered Kegg Orthologs") +
   theme(text = element_text(size=14), axis.text.x = element_text(size  = 14, angle = 90, hjust = 1, vjust = 1)) +
   theme(plot.title = element_text(size = 16)) +
-  facet_wrap(~title, ncol = 6)
+  facet_wrap(~title, ncol = 7)
 # ggsave("plots/cluster.pdf", height = 20, width = 14)
-ggplot2::ggsave("plots/clustering/clusters_p0.05_rsem.png", height = 8, width = 14, create.dir = TRUE)
+ggplot2::ggsave("plots/clustering/clusters_p0.05_rsem.png", height = 10, width = 14, create.dir = TRUE)
 # ggplot2::ggsave("plots/clustering/clusters_p1.0_rsem.png", height = 8, width = 14, create.dir = TRUE)
 
 # extract the group 3 genes
