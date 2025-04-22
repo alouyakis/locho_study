@@ -378,7 +378,7 @@ Sys.time()
 ## clustering method suggested by Pariksheet
 # https://hbctraining.github.io/DGE_workshop/lessons/08_DGE_LRT.html
 
-count_data <- round(tpm_ko, 0)
+count_data <- round(counts_ko, 0)
 # count_data <- count_data[rowSums(count_data) > 10,]
 dds <- DESeqDataSetFromMatrix(countData = count_data, colData = metadata, design = ~ treatment)
 # Wald test
