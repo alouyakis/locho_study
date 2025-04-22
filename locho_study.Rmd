@@ -72,7 +72,7 @@ tpm <- tpm[rowSums(tpm) > 0,]
 # tmm <- tmm[rowSums(tmm) > 0,]
 
 count_totals <- as.data.frame(colSums(counts))
-write.table(count_totals, "tables/count_totals.csv", quote = FALSE, col.names = FALSE)
+write.table(count_totals, "tables/seq_counts/count_totals.csv", quote = FALSE, col.names = FALSE)
 ```
 
 one sample - F-50179103 - was mistakingly sequenced
@@ -186,12 +186,12 @@ Sys.time()
 len <- len[match(rownames(counts), len$transcript_id, nomatch=0),]
 
 ## normalize to gene length - 
-rpk <- counts %>%
-  merge(., len, by.x = 0, by.y = "transcript_id") %>% 
-  column_to_rownames("Row.names") %>%
-  # mutate_each(funs(./(length/1000)), starts_with("mrna")) %>% 
-  mutate(across(c(where(is.numeric), -length), ~ ./(length/1000))) %>%
-  select(-length)
+# rpk <- counts %>%
+#   merge(., len, by.x = 0, by.y = "transcript_id") %>% 
+#   column_to_rownames("Row.names") %>%
+#   # mutate_each(funs(./(length/1000)), starts_with("mrna")) %>% 
+#   mutate(across(c(where(is.numeric), -length), ~ ./(length/1000))) %>%
+#   select(-length)
 ```
 
 filter annotations to get best hits for blastx and blastp
@@ -317,22 +317,24 @@ counts_up <- merge(trinotate_up, counts, by.x = "transcript_id", by.y = "row.nam
   group_by(entry) %>%
   summarize(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) %>%
   column_to_rownames(var = "entry")
+write.table(counts_up, "tables/rsem_uniprot.csv", quote = FALSE, row.names = TRUE)
 
 tpm_up <- merge(trinotate_up, tpm, by.x = "transcript_id", by.y = "row.names") %>%
   select(!c(entry_name, transcript_id)) %>%
   group_by(entry) %>%
   summarize(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) %>%
   column_to_rownames(var = "entry")
+write.table(tpm_up, "tables/tpm_uniprot.csv", quote = FALSE, row.names = TRUE)
 
-rpk_up <- merge(trinotate_up, rpk, by.x = "transcript_id", by.y = "row.names") %>%
-  select(!c(entry_name, transcript_id)) %>%
-  group_by(entry) %>%
-  summarize(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) %>%
-  column_to_rownames(var = "entry")
+# rpk_up <- merge(trinotate_up, rpk, by.x = "transcript_id", by.y = "row.names") %>%
+#   select(!c(entry_name, transcript_id)) %>%
+#   group_by(entry) %>%
+#   summarize(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) %>%
+#   column_to_rownames(var = "entry")
 
 ## get counts by sample for uniprot annotated 
-track_counts <- merge(data.frame(colSums(counts_up)), data.frame(colSums(rpk_up)), by = "row.names") %>%
-  merge(., data.frame(colSums(tpm_up)), by.x = "Row.names", by.y = "row.names")
+track_counts <- merge(data.frame(colSums(counts_up)), data.frame(colSums(tpm_up)), by = "row.names") #%>%
+  # merge(., data.frame(colSums(rpk_up)), by.x = "Row.names", by.y = "row.names")
 ```
 
 ```{r aggregate counts by kegg}
@@ -346,6 +348,7 @@ counts_ko <- counts_up %>%
   group_by(ko) %>%
   summarise(across(everything(), sum)) %>%
   column_to_rownames("ko")
+write.table(counts_ko, "tables/rsem_ko.csv", quote = FALSE, row.names = TRUE)
 
 tpm_ko <- tpm_up %>%
   merge(., kegg2entry, by.x = 0, by.y = "Entry") %>%
@@ -355,19 +358,20 @@ tpm_ko <- tpm_up %>%
   group_by(ko) %>%
   summarise(across(everything(), sum)) %>%
   column_to_rownames("ko")
+write.table(tpm_ko, "tables/tpm_ko.csv", quote = FALSE, row.names = TRUE)
 
-rpk_ko <- rpk_up %>%
-  merge(., kegg2entry, by.x = 0, by.y = "Entry") %>%
-  merge(., kegg2ko, by = "Kegg") %>% 
-  select(!c(Row.names, Kegg)) %>%
-  drop_na(ko) %>%
-  group_by(ko) %>%
-  summarise(across(everything(), sum)) %>%
-  column_to_rownames("ko")
+# rpk_ko <- rpk_up %>%
+#   merge(., kegg2entry, by.x = 0, by.y = "Entry") %>%
+#   merge(., kegg2ko, by = "Kegg") %>%
+#   select(!c(Row.names, Kegg)) %>%
+#   drop_na(ko) %>%
+#   group_by(ko) %>%
+#   summarise(across(everything(), sum)) %>%
+#   column_to_rownames("ko")
 
 ## get counts by sample for uniprot annotated 
 track_counts <- merge(track_counts, data.frame(colSums(counts_ko)), by.x = "Row.names", by.y = "row.names") %>%
-  merge(., data.frame(colSums(rpk_ko)), by.x = "Row.names", by = "row.names") %>%
+  # merge(., data.frame(colSums(rpk_ko)), by.x = "Row.names", by = "row.names") %>%
   merge(., data.frame(colSums(tpm_ko)), by.x = "Row.names", by.y = "row.names")
 ```
 
@@ -394,7 +398,7 @@ sig_res_LRT <- res_LRT %>%
                data.frame() %>%
                rownames_to_column(var = "gene") %>% 
                as_tibble() %>% 
-               filter(pvalue <= 1.0)
+               filter(pvalue <= 0.05)
 
 # Get sig gene lists
 sigLRT_genes <- sig_res_LRT %>% 
@@ -413,7 +417,9 @@ length(sigLRT_genes)
 vst <- varianceStabilizingTransformation(dds, blind = TRUE) ## error from vst suggested using directly "less than 'nsub' rows with mean normalized count > 5"
 
 # Plot PCA 
-plotPCA(vst, intgroup = "treatment")
+pca <- plotPCA(vst, intgroup = "treatment")
+pca + theme_bw()
+ggsave("plots/clustering/pca_rsem.png")
 
 # Extract the rlog matrix from the object
 vst_mat <- assay(vst)
@@ -422,7 +428,7 @@ vst_mat <- assay(vst)
 vst_cor <- cor(vst_mat)
 
 # Plot heatmap
-pheatmap(vst_cor)
+pheatmap(vst_cor, filename = "plots/clustering/heatmap_rsem.png")
 
 # Obtain rlog values for those significant genes
 # cluster_rlog <- rld_mat[clustering_sig_genes$gene, ]
@@ -458,8 +464,8 @@ ggplot(plot_data) +
   theme(plot.title = element_text(size = 16)) +
   facet_wrap(~title, ncol = 6)
 # ggsave("plots/cluster.pdf", height = 20, width = 14)
-# ggplot2::ggsave("plots/clustering/clusters_p0.05.png", height = 8, width = 14, create.dir = TRUE)
-ggplot2::ggsave("plots/clustering/clusters_p1.0.png", height = 8, width = 14, create.dir = TRUE)
+# ggplot2::ggsave("plots/clustering/clusters_p0.05_rsem.png", height = 8, width = 14, create.dir = TRUE)
+ggplot2::ggsave("plots/clustering/clusters_p1.0_rsem.png", height = 8, width = 14, create.dir = TRUE)
 
 # extract the group 3 genes
 # cluster_groups <- cluster_all$df
@@ -470,7 +476,7 @@ dfs <- split(cluster_all$df, cluster_all$df$cluster) # list of dfs
 # use numbers as file names
 lapply(names(dfs),
        # function(x){write.csv(dfs[[x]], paste0("tables/cluster_kegg_p0.05_", x,".csv"),
-       function(x){write.csv(dfs[[x]], paste0("tables/cluster_kegg_p1.0_", x,".csv"),
+       function(x){write.csv(dfs[[x]], paste0("tables/clusters/cluster_kegg_p1.0_rsem_", x,".csv"),
                              row.names = FALSE)})
 ```
 
