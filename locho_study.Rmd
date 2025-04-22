@@ -178,6 +178,7 @@ metadata <- merge(mg_metadata, mgmt_map, by = "mg", all = TRUE) %>%
 #   filter(ck_number == "B-50179072" & analyte == "Basophils")
 ```
 
+rsem estimates are already length corrected, so only need this for counts tables created using other methods
 ```{r gene length normalization}
 Sys.time()
 
@@ -388,12 +389,12 @@ dds_lrt <- DESeq(dds, test="LRT", reduced = ~ 1)
 # Extract results
 res_LRT <- results(dds_lrt)
 
-# Subset the LRT results to return genes with padj < 0.05 or pvalue < 0.05
+# Subset the LRT results to return genes with padj < 0.05 or pvalue < 0.05 (to plot all, pvalue<=1.0)
 sig_res_LRT <- res_LRT %>%
                data.frame() %>%
                rownames_to_column(var = "gene") %>% 
                as_tibble() %>% 
-               filter(pvalue < 0.05)
+               filter(pvalue <= 1.0)
 
 # Get sig gene lists
 sigLRT_genes <- sig_res_LRT %>% 
@@ -453,11 +454,12 @@ ggplot(plot_data) +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
   theme(legend.position = "none") +
   labs(x = NULL, y = "scaled expression", title = "Clustered Kegg Orthologs") +
-  theme(text = element_text(size=16), axis.text.x = element_text(size  = 16, angle = 90, hjust = 1, vjust = 1)) +
+  theme(text = element_text(size=14), axis.text.x = element_text(size  = 14, angle = 90, hjust = 1, vjust = 1)) +
   theme(plot.title = element_text(size = 16)) +
   facet_wrap(~title, ncol = 6)
 # ggsave("plots/cluster.pdf", height = 20, width = 14)
-ggplot2::ggsave("plots/clustering/clusters.png", height = 8, width = 14, create.dir = TRUE)
+# ggplot2::ggsave("plots/clustering/clusters_p0.05.png", height = 8, width = 14, create.dir = TRUE)
+ggplot2::ggsave("plots/clustering/clusters_p1.0.png", height = 8, width = 14, create.dir = TRUE)
 
 # extract the group 3 genes
 # cluster_groups <- cluster_all$df
@@ -467,7 +469,8 @@ ggplot2::ggsave("plots/clustering/clusters.png", height = 8, width = 14, create.
 dfs <- split(cluster_all$df, cluster_all$df$cluster) # list of dfs
 # use numbers as file names
 lapply(names(dfs),
-       function(x){write.csv(dfs[[x]], paste0("tables/cluster_kegg_", x,".csv"),
+       # function(x){write.csv(dfs[[x]], paste0("tables/cluster_kegg_p0.05_", x,".csv"),
+       function(x){write.csv(dfs[[x]], paste0("tables/cluster_kegg_p1.0_", x,".csv"),
                              row.names = FALSE)})
 ```
 
