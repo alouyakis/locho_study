@@ -483,5 +483,15 @@ rm trinity_out/left.fa.ok
 rm trinity_out/right.fa.ok
 ```
 
+send all alignment rates to single file
+```bash
+cd tables/
+for i in align_stats_F-50179*; do
+  rate=$(grep "overall alignment rate" ${i})
+  echo "${i},${rate}" | sed 's/align_stats_//g;s/-003S.txt//g;s/% overall alignment rate//g' >> overall_alignment_rates.csv
+done
+sort overall_alignment_rates.csv > overall_alignment_rates.csv.tmp && mv overall_alignment_rates.csv.tmp overall_alignment_rates.csv
+cd ../
+```
 
 END
