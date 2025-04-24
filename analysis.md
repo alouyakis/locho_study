@@ -53,26 +53,26 @@ sequence counts:
 ```bash
 ## raw counts
 ## QC - counts should match:
-zgrep -c "^+$" ${rawseqs}/*R1*.fastq.gz > ${tables}/raw_fwd.csv
-zgrep -c "^+$" ${rawseqs}/*R2*.fastq.gz > ${tables}/raw_rev.csv
+zgrep -c "^+$" ${rawseqs}/*R1*.fastq.gz > ${tables}/seq_counts/raw_fwd.csv
+zgrep -c "^+$" ${rawseqs}/*R2*.fastq.gz > ${tables}/seq_counts/raw_rev.csv
 
 ## filtered counts
 ## QC - counts should match:
-zgrep -c "^+$" ${filtseqs}/*pair_R1*.fastq.gz > ${tables}/filt_paired_fwd.csv
-zgrep -c "^+$" ${filtseqs}/*pair_R2*.fastq.gz > ${tables}/filt_paired_rev.csv
+zgrep -c "^+$" ${filtseqs}/*pair_R1*.fastq.gz > ${tables}/seq_counts/filt_paired_fwd.csv
+zgrep -c "^+$" ${filtseqs}/*pair_R2*.fastq.gz > ${tables}/seq_counts/filt_paired_rev.csv
 ## singleton counts:
-zgrep -c "^+$" ${filtseqs}/*single_R1*.fastq.gz > ${tables}/filt_singles_fwd.csv
-zgrep -c "^+$" ${filtseqs}/*single_R2*.fastq.gz > ${tables}/filt_singles_rev.csv
+zgrep -c "^+$" ${filtseqs}/*single_R1*.fastq.gz > ${tables}/seq_counts/filt_singles_fwd.csv
+zgrep -c "^+$" ${filtseqs}/*single_R2*.fastq.gz > ${tables}/seq_counts/filt_singles_rev.csv
 
 ## rrna vs mrna counts
-zgrep -c "^+$" ${sortmerna}/mrna_*fwd*.fq.gz > ${tables}/mrna_paired_fwd.csv
-zgrep -c "^+$" ${sortmerna}/mrna_*rev*.fq.gz > ${tables}/mrna_paired_rev.csv
-zgrep -c "^+$" ${sortmerna}/rrna_*fwd*.fq.gz > ${tables}/rrna_paired_fwd.csv
-zgrep -c "^+$" ${sortmerna}/rrna_*rev*.fq.gz > ${tables}/rrna_paired_rev.csv
+zgrep -c "^+$" ${sortmerna}/mrna_*fwd*.fq.gz > ${tables}/seq_counts/mrna_paired_fwd.csv
+zgrep -c "^+$" ${sortmerna}/mrna_*rev*.fq.gz > ${tables}/seq_counts/mrna_paired_rev.csv
+zgrep -c "^+$" ${sortmerna}/rrna_*fwd*.fq.gz > ${tables}/seq_counts/rrna_paired_fwd.csv
+zgrep -c "^+$" ${sortmerna}/rrna_*rev*.fq.gz > ${tables}/seq_counts/rrna_paired_rev.csv
 
 ## mrna with host removed counts
-grep -c "^+$" ${nohost}/mrna_*_rmhost_dog_r1.fq > ${tables}/mrna_nohost_fwd.csv
-grep -c "^+$" ${nohost}/mrna_*_rmhost_dog_r2.fq > ${tables}/mrna_nohost_rev.csv
+grep -c "^+$" ${nohost}/mrna_*_rmhost_dog_r1.fq > ${tables}/seq_counts/mrna_nohost_fwd.csv
+grep -c "^+$" ${nohost}/mrna_*_rmhost_dog_r2.fq > ${tables}/seq_counts/mrna_nohost_rev.csv
 ```
 
 quality check:
@@ -233,23 +233,23 @@ parallel -j 10 \
   'bowtie2 -p 10 -q --no-unal -k 20 -x ${trinity_out}/Trinity.fasta \
     -1 ${nohost}/mrna_{1}_rmhost_dog_r1.fq \
     -2 ${nohost}/mrna_{1}_rmhost_dog_r2.fq \
-    2>${tables}/align_stats_{1}.txt | samtools view -@10 -Sb \
+    2>${tables}/align_stats/align_stats_{1}.txt | samtools view -@10 -Sb \
     -o ${alignments}/bowtie2_{1}.bam' ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
 
-cat 2>&1 ${tables}/align_stats_*.txt | less
+cat 2>&1 ${tables}/align_stats/align_stats_*.txt | less
 
 ## alternative
 parallel -j 10 \
   'bowtie2 -p 10 --local -q --no-unal -x ${trinity_out}/Trinity.fasta \
     -1 ${nohost}/mrna_{1}_rmhost_dog_r1.fq \
     -2 ${nohost}/mrna_{1}_rmhost_dog_r2.fq \
-    2>${tables}/alt_align_stats_{1}.txt | samtools view -@10 -Sb - | \
+    2>${tables}/align_stats/alt_align_stats_{1}.txt | samtools view -@10 -Sb - | \
     samtools sort -o ${alignments}/alt_bowtie2_{1}.bam' ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
 
 bowtie2 -p 10 --local -q --no-unal -x ${trinity_out}/Trinity.fasta \
   -1 ${nohost}/mrna_F-50179058-003S_rmhost_dog_r1.fq \
   -2 ${nohost}/mrna_F-50179058-003S_rmhost_dog_r2.fq \
-  2>${tables}/alt_align_stats_F-50179058-003S.txt | samtools view -@10 -Sb - | \
+  2>${tables}/align_stats/alt_align_stats_F-50179058-003S.txt | samtools view -@10 -Sb - | \
   samtools sort -o ${alignments}/alt_bowtie2_F-50179058-003S.bam
 ```
 
@@ -485,13 +485,13 @@ rm trinity_out/right.fa.ok
 
 send all alignment rates to single file
 ```bash
-cd tables/
+cd tables/align_stats/
 for i in align_stats_F-50179*; do
   rate=$(grep "overall alignment rate" ${i})
   echo "${i},${rate}" | sed 's/align_stats_//g;s/-003S.txt//g;s/% overall alignment rate//g' >> overall_alignment_rates.csv
 done
 sort overall_alignment_rates.csv > overall_alignment_rates.csv.tmp && mv overall_alignment_rates.csv.tmp overall_alignment_rates.csv
-cd ../
+cd ../../
 ```
 
 END
