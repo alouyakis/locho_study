@@ -679,17 +679,16 @@ Sys.time()
 plot <- plot_network(ig, physeq, type = 'taxa', color = 'level2', label = NULL,
                      line_alpha = 0.1, point_size = 1, line_weight = 0.1) +
         theme(legend.position = "none")
-plot
-ggsave(paste0(network_plots_dir, "/all_level2_dist0.8.png"))
+ggsave(plot, paste0(network_plots_dir, "/all_level2_dist0.8.png"))
 
 # label all points
-plot + geom_text(aes_string(label="value"), size = 2, hjust=1.35, na.rm=TRUE)
-ggsave(paste0(network_plots_dir, "/all_level2_dist0.8_labeled.png"))
+plot <- plot + geom_text(aes_string(label="value"), size = 2, hjust=1.35, na.rm=TRUE)
+ggsave(plot, paste0(network_plots_dir, "/all_level2_dist0.8_labeled.png"))
 
 ## make with legends
-plot_network(ig, physeq, type = 'taxa', color = 'level2', label = NULL,
+plot <- plot_network(ig, physeq, type = 'taxa', color = 'level2', label = NULL,
              line_alpha = 0.1, point_size = 1, line_weight = 0.1)
-ggsave(paste0(network_plots_dir, "/all_level2_dist0.8_wlegend.png"))
+ggsave(plot, paste0(network_plots_dir, "/all_level2_dist0.8_wlegend.png"))
 ```
 
 ```{r network filter and plot}
@@ -718,6 +717,12 @@ ggsave(paste0(network_plots_dir, "/energy_level3_dist0.8_labeled.png"))
 plot_network(ig_sub, physeq_sub, type = 'taxa', color = 'level3', label = NULL,
              line_alpha = 0.1, point_size = 1, line_weight = 0.1)
 ggsave(paste0(network_plots_dir, "/energy_level3_dist0.8_wlegend.png"))
+```
+
+```{r network function}
+Sys.time()
+
+
 ```
 
 
