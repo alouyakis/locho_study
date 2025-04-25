@@ -11,6 +11,7 @@ scripts/logs/*spades*
 !annotations/filter_blastx.fmt6
 !annotations/filter_blastp.fmt6
 bb4_wmgx_wmtx_out/
+*nb.html
 
 # History files
 .Rhistory
