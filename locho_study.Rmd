@@ -28,6 +28,18 @@ library(vegan)
 library(corrplot)
 library(ggtern)
 library(pheatmap)
+
+## network
+library(phyloseq)
+# library(dplyr)
+library(plyr)
+library(ggthemes)
+# library(tidyr)
+library(KEGGREST)
+# library(tibble)
+# library(ggplot2)
+library(ggpubr)
+
 # library(EnhancedVolcano) ## load separately - conflict in list
 # library(beepr) ## alarm added to code chunks that may take longer than others
 ```
@@ -49,6 +61,9 @@ if (!dir.exists(tables_dir)) {
 }
 if (!dir.exists(plots_dir)) {
   dir.create(plots_dir)
+}
+if (!dir.exists(noiseq_dir)) {
+  dir.create(noiseq_dir)
 }
 if (!dir.exists(noiseq_dir)) {
   dir.create(noiseq_dir)
@@ -114,10 +129,62 @@ kegg2entry %>%
 kegg2ko %>% 
   mutate(ko = gsub("ko:", "", ko)) -> kegg2ko
 ## uniprot Entry.Name mapped to uniprot Entry
-uniprot_map[,c("Entry", "Entry.Name")] %>% head()
+# uniprot_map[,c("Entry", "Entry.Name")] %>% head()
 
-# ko_map <- read.delim("data/kegg_up_map.txt", header = FALSE) %>% rename(kegg = V1, ko = V2, gene = V3, uniprot = V4)
-# khier <- read.delim("data/khier_ko.txt", header = FALSE) %>% rename(level1 = V1, level2 = V2, level3 = V3, ko = V4, ko_name = V5) %>% unique()
+## old version pulled from kegg website
+# khier <- read.delim("/data/databases/kegg/khier_ko.txt", header = FALSE) %>% 
+#   dplyr::rename(level1 = V1, level2 = V2, level3 = V3, ko = V4, ko_name = V5) %>% 
+#   unique()
+```
+
+```{r make khier}
+Sys.time()
+
+# Read the file
+lines <- readLines("/data/databases/kegg/ftp.pathway.jp/kegg/brite/ko/ko00001.keg")
+
+# Initialize variables to keep track of current A, B, and C values
+current_A <- NA
+current_B <- NA
+current_C <- NA
+
+# Create an empty list to store the rows of the table
+table_rows <- list()
+
+# Iterate over each line in the file
+for (line in lines) {
+  # Extract the first character to decide the type of the line
+  first_char <- substr(line, 1, 1)
+  
+  if (first_char == "A") {
+    # Extract everything after "A", preserving leading zeros
+    current_A <- substr(line, 2, nchar(line))
+    current_A <- trimws(current_A)
+  } else if (first_char == "B") {
+    # Remove the prefix "B" and leading white space
+    current_B <- trimws(substr(line, 3, nchar(line)))
+  } else if (first_char == "C") {
+    # Remove the prefix "C" and leading white space
+    current_C <- trimws(substr(line, 3, nchar(line)))
+  } else if (first_char == "D") {
+    # Split the content after "D" to extract KO and KO Name
+    content <- trimws(substr(line, 3, nchar(line)))
+    ko_split <- strsplit(content, "\\s+", fixed = FALSE, perl = TRUE, useBytes = FALSE)[[1]]
+    ko <- ko_split[1]
+    ko_name <- paste(ko_split[-1], collapse = " ")
+
+    # Append a new row to the table with cleaned values
+    table_rows <- append(table_rows, list(c(current_A, current_B, current_C, ko, ko_name)))
+  }
+}
+
+# Convert the list of rows to a data frame
+khier <- data.frame(do.call(rbind, table_rows))
+colnames(khier) <- c("level1", "level2", "level3", "ko", "ko_name")
+
+write.table(khier, "/data/databases/kegg/khier.txt", quote = FALSE, row.names = FALSE)
+
+rm(lines, current_A, current_B, current_C, table_rows, line, first_char, content, ko_split, ko, ko_name)
 ```
 
 import sample metadata
@@ -136,7 +203,7 @@ mt_metadata <- read.delim("data/mt_sample_data.txt") %>%
   filter(mt != "F-50179103") ## MONSTER only sampled for single time point
 
 mgmt_map <- read.delim("data/bb4_mtmg_map.tsv") %>%
-  rename(mt_full = X.mt, mg_full = mg) %>%
+  dplyr::rename(mt_full = X.mt, mg_full = mg) %>%
   mutate(mg = sub("^([^-]*-[^-]*).*", "\\1", mg_full),
          mt = sub("^([^-]*-[^-]*).*", "\\1", mt_full)) %>%
   filter(mt != "F-50179103")
@@ -150,32 +217,6 @@ metadata <- merge(mg_metadata, mgmt_map, by = "mg", all = TRUE) %>%
   mutate(sample_id = sub("-", ".", paste0("mrna_", mt, ".003S"))) %>%
   relocate(sample_id, .before = everything()) %>%
   mutate(treatment = paste0(time_point, "_", diet_name))
-
-# sd <- sample_data %>%
-#   select(ck_number, animal_id, sample_type, cp_phase, test_day) %>%
-#   distinct()
-# 
-# rd <- results_data %>%
-#   select(ck_number, animal_id, animal_name, tattoo_number, sample_type, matrix,
-#          cp_phase, phase_day, analysis_method, operating_set, analyte, standard_value, standard_unit) %>%
-#   unite("unique_id", c(animal_name, tattoo_number, cp_phase, phase_day)) %>%
-#   distinct()
-
-# rdw <- rd %>%
-#   pivot_wider(names_from = c(sample_type, matrix, analysis_method, operating_set, analyte),
-#               values_from = c(standard_value, standard_unit),
-#               id_cols = )
-# 
-# metadata %>% 
-#   select(mg, mt, diet_name)
-# 
-# rd |>
-#   dplyr::summarise(n = dplyr::n(), .by = c(ck_number, animal_id, unique_id, sample_type, matrix, operating_set,
-#   analyte)) |>
-#   dplyr::filter(n > 1L)
-# 
-# results_data %>%
-#   filter(ck_number == "B-50179072" & analyte == "Basophils")
 ```
 
 rsem estimates are already length corrected, so only need this for counts tables created using other methods
@@ -235,10 +276,12 @@ trinotate_up <- bind_rows(trinotate_x, trinotate_p) %>%
   slice_head(n = 1) %>%
   ungroup()
 
-trinotate_up_all <- bind_rows(trinotate_x, trinotate_p) %>%
-  distinct() %>%
-  group_by(transcript_id) %>%
-  ungroup()
+# trinotate_up_all <- bind_rows(trinotate_x, trinotate_p) %>%
+#   distinct() %>%
+#   group_by(transcript_id) %>%
+#   ungroup()
+
+rm(trinotate_x, trinotate_p, tmp)
 
 ### old method:
 ## create uniprot map from trinotate annotation table
@@ -315,21 +358,21 @@ Sys.time()
 counts_up <- merge(trinotate_up, counts, by.x = "transcript_id", by.y = "row.names") %>%
   select(!c(entry_name, transcript_id)) %>%
   group_by(entry) %>%
-  summarize(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) %>%
+  dplyr::summarise(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) %>%
   column_to_rownames(var = "entry")
 write.table(counts_up, "tables/rsem_uniprot.csv", quote = FALSE, row.names = TRUE)
 
 tpm_up <- merge(trinotate_up, tpm, by.x = "transcript_id", by.y = "row.names") %>%
   select(!c(entry_name, transcript_id)) %>%
   group_by(entry) %>%
-  summarize(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) %>%
+  dplyr::summarise(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) %>%
   column_to_rownames(var = "entry")
 write.table(tpm_up, "tables/tpm_uniprot.csv", quote = FALSE, row.names = TRUE)
 
 # rpk_up <- merge(trinotate_up, rpk, by.x = "transcript_id", by.y = "row.names") %>%
 #   select(!c(entry_name, transcript_id)) %>%
 #   group_by(entry) %>%
-#   summarize(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) %>%
+#   dplyr::summarise(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) %>%
 #   column_to_rownames(var = "entry")
 
 ## get counts by sample for uniprot annotated 
@@ -346,7 +389,7 @@ counts_ko <- counts_up %>%
   select(!c(Row.names, Kegg)) %>%
   drop_na(ko) %>%
   group_by(ko) %>%
-  summarise(across(everything(), sum)) %>%
+  dplyr::summarise(across(everything(), sum)) %>%
   column_to_rownames("ko")
 write.table(counts_ko, "tables/rsem_ko.csv", quote = FALSE, row.names = TRUE)
 
@@ -356,7 +399,7 @@ tpm_ko <- tpm_up %>%
   select(!c(Row.names, Kegg)) %>%
   drop_na(ko) %>%
   group_by(ko) %>%
-  summarise(across(everything(), sum)) %>%
+  dplyr::summarise(across(everything(), sum)) %>%
   column_to_rownames("ko")
 write.table(tpm_ko, "tables/tpm_ko.csv", quote = FALSE, row.names = TRUE)
 
@@ -366,7 +409,7 @@ write.table(tpm_ko, "tables/tpm_ko.csv", quote = FALSE, row.names = TRUE)
 #   select(!c(Row.names, Kegg)) %>%
 #   drop_na(ko) %>%
 #   group_by(ko) %>%
-#   summarise(across(everything(), sum)) %>%
+#   dplyr::summarise(across(everything(), sum)) %>%
 #   column_to_rownames("ko")
 
 ## get counts by sample for uniprot annotated 
@@ -374,6 +417,14 @@ track_counts <- merge(track_counts, data.frame(colSums(counts_ko)), by.x = "Row.
   # merge(., data.frame(colSums(rpk_ko)), by.x = "Row.names", by = "row.names") %>%
   merge(., data.frame(colSums(tpm_ko)), by.x = "Row.names", by.y = "row.names")
 ```
+
+after finishing functional aggregations, write a completed tracking tables
+```{r write tracking table}
+Sys.time()
+
+write.csv(track_counts, "tables/seq_counts/functional_counts.csv", quote = FALSE, row.names = FALSE)
+```
+
 
 ## cluster
 ```{r clustering}
@@ -414,7 +465,7 @@ length(sigLRT_genes)
 # Transform counts for data visualization
 # rld <- rlog(dds, blind=TRUE)
 # vst <- vst(dds, blind = TRUE) ## faster transformation to try 2024.07.02
-vst <- varianceStabilizingTransformation(dds, blind = TRUE) ## error from vst suggested using directly "less than 'nsub' rows with mean normalized count > 5"
+vst <- varianceStabilizingTransformation(dds, blind = TRUE) 
 
 # Plot PCA 
 pca <- plotPCA(vst, intgroup = "treatment")
@@ -479,6 +530,180 @@ lapply(names(dfs),
        # function(x){write.csv(dfs[[x]], paste0("tables/clusters/cluster_kegg_p1.0_rsem_", x,".csv"),
                              row.names = FALSE)})
 ```
+
+```{r differential expression - ko}
+Sys.time()
+
+## test features from metadata
+treatment <- unique(metadata$treatment)
+
+## cpm normalization
+ko_cpm <- cpm(counts_ko)
+
+## create noiseq object
+dds <- NOISeq::readData(data = ko_cpm, factors = metadata)
+save(dds, file ="noiseq/dds_ko.RData")
+
+## run de on treatments
+for(s1 in treatment){
+  for(s2 in treatment){
+    if(s1!=s2){
+      if(s1<s2){
+        print(c(s1,s2))
+        tmm <- noiseqbio(dds, norm = "tmm", k = 0.5, factor = "treatment", conditions = c(s1, s2), 
+                             r = 50, filter = 0, a0per= 0.9, nclust = 15, random.seed = 321, plot = TRUE, lc = 0)
+        save(tmm, file = paste0("noiseq/nsb_ko_",s1,"_vs_",s2,"_tmm.RData"))
+        tmm_r <- as.data.frame(tmm@results)
+        write.table(tmm@results, paste0("noiseq/nsb_ko_",s1,"_vs_",s2,"_tmm.txt"), sep = "\t",
+                    row.names = TRUE, col.names = NA, quote = FALSE)
+        tmm_r <- na.omit(tmm_r)
+        tmm_r$P <- with(tmm_r, 1-prob)
+        tmm_r$id <- row.names(tmm_r)
+        write.table(tmm_r, paste0("noiseq/nsb_ko_",s1,"_vs_",s2,"_tmm_filtered.txt"), sep = "\t",
+                    row.names = TRUE, col.names = NA, quote = FALSE)
+        tmm.deg <- list(all = degenes(tmm, q = 0.95, M = NULL),
+                        up = degenes(tmm, q = 0.95, M = "up"),
+                        down = degenes(tmm, q = 0.95, M = "down"))
+        write.table(tmm.deg$all, paste0("noiseq/nsb_ko_",s1,"_vs_",s2,"_tmm_deg.txt"), sep = "\t",
+                    row.names = TRUE, col.names = NA, quote = FALSE)
+        write.table(tmm.deg$down, paste0("noiseq/nsb_ko_",s1,"_vs_",s2,"_tmm_deg_down.txt"), sep = "\t",
+            row.names = TRUE, col.names = NA, quote = FALSE)
+        write.table(tmm.deg$up, paste0("noiseq/nsb_ko_",s1,"_vs_",s2,"_tmm_deg_up.txt"), sep = "\t",
+            row.names = TRUE, col.names = NA, quote = FALSE)
+      }}}}
+```
+
+```{r md plots for ko}
+Sys.time()
+
+## test features from metadata
+treatment <- unique(metadata$treatment)
+
+for(s1 in treatment){
+  for(s2 in treatment){
+    if(s1!=s2){
+      if(s1<s2){
+        print(c(s1,s2))
+        load(paste0("noiseq/nsb_ko_",s1,"_vs_",s2,"_tmm.RData"))
+        DE.plot(tmm, graphic = "MD")
+        tmm_r <- as.data.frame(tmm@results)
+        ## plot with ggplot - 
+        tmp <- data.frame(log2FC = tmm_r[,5], log_c = log(tmm_r[,1]), log_s = log(tmm_r[,2]))
+        tmp$abs_mean_diff <- rowMeans(tmp[,c("log_c", "log_s")])
+        ggplot(tmp, aes(x = log2FC, y = abs_mean_diff)) +
+          geom_point() +
+          theme_bw() + theme(panel.grid = element_blank()) +
+          labs(x = expression("Log"["2"]*"FC"),
+            y = "Absolute value of difference of means",
+            title = paste("MD plot (ko):",s1,"vs",s2))
+        ggsave(paste0("plots/md_",s1,"_vs_",s2,"_ko.png"))
+        tmm_r
+      }}}}
+```
+
+```{r interactive volcano - ko}
+Sys.time()
+
+## test features from metadata
+treatment <- unique(metadata$treatment)
+
+## treatment by ko - noiseq
+for(s1 in treatment){
+  for(s2 in treatment){
+    if(s1!=s2){
+      if(s1<s2){
+        print(c(s1,s2))
+        tmm_r <- read.delim(paste0("noiseq/nsb_ko_",s1,"_vs_",s2,"_tmm_filtered.txt"), 
+                            header=TRUE, row.names = 1, com = '', check.names = FALSE)
+        tmm_rm <- merge(tmm_r, khier, by.x = "id", by.y = "ko", all.x = TRUE)
+        tmm_rm$EFFECTSIZE <- tmm_rm$log2FC
+        write.table(tmm_rm, paste0("noiseq/nsb_ko_",s1,"_vs_",s2,"_tmm_filtered_annot.txt"), 
+                    sep = "\t", row.names = FALSE, quote = FALSE)
+        volc_obj <- volcanor(tmm_rm, p = "P", effect_size = "EFFECTSIZE", snp = "id", 
+                             gene = "ko_name", annotation1 = "level2", annotation2 = "level3")
+        volc_plot <- volcanoly(volc_obj, effect_size_line = c(-2,2), effect_size_line_color = "orange",
+                               genomewideline = -log10(1e-2), genomewideline_color = "green", title = paste(s1,"vs",s2))
+        print(volc_plot)
+        htmlwidgets::saveWidget(volc_plot, paste0("plots/volcano_ko_nsb_",s1,"_vs_",s2,"_tmm_filtered.html"))
+      }}}}
+```
+
+network analysis
+```{r network prep}
+Sys.time()
+
+## tmm adjustment to counts
+tmm_ko <- NOISeq::tmm(counts_ko, long = 1000, lc = 0)
+tmm_ko <- tmm_ko[rowSums(tmm_ko) > 0,]
+
+## subset khier table
+khier_sub <- khier %>%
+  filter(ko %in% rownames(tmm_ko)) %>%
+  group_by(ko) %>%
+  slice_head() %>%
+  column_to_rownames(var = "ko")
+
+## filter pathways for network
+# khier_sub <- khier %>%
+#   separate(level2, c('l2id', 'level2'), sep = 5) %>%
+#   # filter(level2 == 'Cellular community - prokaryotes')
+#   filter(level2 == 'Energy metabolism')
+## subset tmm table for subsetted khier
+# tmm_ko_sub <- tmm_ko %>%
+#   rownames_to_column(var = ko) %>%
+#   filter(ko %in% khier_sub$ko) %>%
+#   column_to_rownames(var = "ko")
+
+## create phyloseq object
+physeq <- phyloseq(otu_table(tmm_ko, taxa_are_rows = TRUE),
+                   sample_data(metadata %>% column_to_rownames(var = "sample_id")),
+                   tax_table(as.matrix(khier_sub)))
+
+## create directory for plots
+network_plots <- "plots/network"
+if (!dir.exists(network_plots)) {
+  dir.create(network_plots)
+}
+
+## graph all 
+ig <- make_network(physeq, type="taxa", distance="bray", max.dist = 0.8, keep.isolates=FALSE)
+```
+
+```{r network plot}
+Sys.time()
+
+## plot the network and save the basic plot without a legend
+## you can change the color to whichever factor you would like to color your nodes and edges by
+plot <- plot_network(ig, physeq, type = 'taxa', color = 'level2', label = NULL,
+                     line_alpha = 0.1, point_size = 1, line_weight = 0.1) +
+        theme(legend.position = "none")
+plot
+ggsave(paste0(network_plots, "all_level2_dist0.8.png"))
+
+# label all points
+plot + geom_text(aes_string(label="value"), size = 2, hjust=1.35, na.rm=TRUE)
+ggsave(paste0(network_plots, "all_level2_dist0.8_labeled.png"))
+
+## make with legends
+plot_network(ig, physeq, type = 'taxa', color = 'level2', label = NULL,
+             line_alpha = 0.1, point_size = 1, line_weight = 0.1)
+ggsave(paste0(network_plots, "all_level2_dist0.8_wlegend.png"))
+```
+
+```{r network filter and plot}
+Sys.time()
+
+physeq_sub <- physeq %>% 
+  subset_taxa(level2 == "09102 Energy metabolism") %>%
+  subset_taxa(level3 != "00195 Photosynthesis [PATH:ko00195]") %>%
+  subset_taxa(level3 != "00196 Photosynthesis - antenna proteins [PATH:ko00196]")
+
+## graph subset
+ig <- make_network(physeq_sub, type = "taxa", distance = "bray", max.dist = 0.8, keep.isolates = FALSE)
+
+
+```
+
 
 ## plotting quality not needed if running fastqc
 ```{r plot quality}
