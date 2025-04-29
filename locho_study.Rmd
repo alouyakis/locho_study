@@ -353,9 +353,23 @@ trinotate %>%
 cat("Total # with only blastp hit:", f, "\n")
 
 x <- read_trinotate("annotations/trinotate_annotation_report.xls")
-summary_trinotate(x)
+xs <- summary_trinotate(x)
+xs
 
-rm(ag, ai, ap, b, c, d, e, f, x)
+sink(paste0(tables_dir, "/annotation_summary.txt"))
+cat("Total # of genes:", ag, "\n")
+cat("Total # of isoforms:", ai, "\n")
+cat("Total # of proteins:", ap, "\n")
+cat("Total # with blastx or blastp hit:", b, "\n")
+cat("Total # with no blast hit:", c, "\n")
+cat("Total # with both blastx and blastp hit:", d, "\n")
+cat("Total # with only blastp hit:", f, "\n")
+sink()
+
+write.table(xs, file = paste0(tables_dir, "/trinotate_summary.csv"), 
+            quote = FALSE, sep = "\t", row.names = TRUE, col.names = NA)
+
+rm(ag, ai, ap, b, c, d, e, f, x, xs)
 ```
 
 sum by function
@@ -432,7 +446,6 @@ Sys.time()
 
 write.csv(track_counts, paste0(tables_dir, "/seq_counts/functional_counts.csv"), quote = FALSE, row.names = FALSE)
 ```
-
 
 ## cluster
 ```{r clustering}
@@ -539,6 +552,7 @@ lapply(names(dfs),
                              row.names = FALSE)})
 ```
 
+differential expression analysis for kegg
 ```{r differential expression - ko}
 Sys.time()
 
@@ -630,11 +644,118 @@ for(s1 in treatment){
         volc_obj <- volcanor(tmm_rm, p = "P", effect_size = "EFFECTSIZE", snp = "id", 
                              gene = "ko_name", annotation1 = "level2", annotation2 = "level3")
         volc_plot <- volcanoly(volc_obj, effect_size_line = c(-2,2), effect_size_line_color = "orange",
-                               genomewideline = -log10(1e-2), genomewideline_color = "green", title = paste(s1,"vs",s2))
-        print(volc_plot)
+                               genomewideline = -log10(1e-2), genomewideline_color = "green", title = paste(s1, "vs", s2, "(kegg)"))
+        # print(volc_plot)
         htmlwidgets::saveWidget(volc_plot, paste0(noiseq_plots_dir, "/volcano_ko_nsb_",s1,"_vs_",s2,"_tmm_filtered.html"))
       }}}}
 ```
+
+differential expression for uniprot
+```{r differential expression - uniprot}
+Sys.time()
+
+## test features from metadata
+treatment <- unique(metadata$treatment)
+
+## cpm normalization
+up_cpm <- cpm(counts_up)
+
+## create noiseq object
+dds <- NOISeq::readData(data = up_cpm, factors = metadata)
+save(dds, file = paste0(noiseq_dir, "/dds_uniprot.RData"))
+
+## run de on treatments
+for(s1 in treatment){
+  for(s2 in treatment){
+    if(s1!=s2){
+      if(s1<s2){
+        print(c(s1,s2))
+        tmm <- noiseqbio(dds, norm = "tmm", k = 0.5, factor = "treatment", conditions = c(s1, s2), 
+                             r = 50, filter = 0, a0per= 0.9, nclust = 15, random.seed = 321, plot = TRUE, lc = 0)
+        save(tmm, file = paste0(noiseq_dir, "/nsb_uniprot_",s1,"_vs_",s2,"_tmm.RData"))
+        tmm_r <- as.data.frame(tmm@results)
+        write.table(tmm@results, paste0(noiseq_dir, "/nsb_uniprot_",s1,"_vs_",s2,"_tmm.txt"), sep = "\t",
+                    row.names = TRUE, col.names = NA, quote = FALSE)
+        tmm_r <- na.omit(tmm_r)
+        tmm_r$P <- with(tmm_r, 1-prob)
+        tmm_r$id <- row.names(tmm_r)
+        write.table(tmm_r, paste0(noiseq_dir, "/nsb_uniprot_",s1,"_vs_",s2,"_tmm_filtered.txt"), sep = "\t",
+                    row.names = TRUE, col.names = NA, quote = FALSE)
+        tmm.deg <- list(all = degenes(tmm, q = 0.95, M = NULL),
+                        up = degenes(tmm, q = 0.95, M = "up"),
+                        down = degenes(tmm, q = 0.95, M = "down"))
+        write.table(tmm.deg$all, paste0(noiseq_dir, "/nsb_uniprot_",s1,"_vs_",s2,"_tmm_deg.txt"), sep = "\t",
+                    row.names = TRUE, col.names = NA, quote = FALSE)
+        write.table(tmm.deg$down, paste0(noiseq_dir, "/nsb_uniprot_",s1,"_vs_",s2,"_tmm_deg_down.txt"), sep = "\t",
+            row.names = TRUE, col.names = NA, quote = FALSE)
+        write.table(tmm.deg$up, paste0(noiseq_dir, "/nsb_uniprot_",s1,"_vs_",s2,"_tmm_deg_up.txt"), sep = "\t",
+            row.names = TRUE, col.names = NA, quote = FALSE)
+      }}}}
+```
+
+```{r md plots for uniprot}
+Sys.time()
+
+## test features from metadata
+treatment <- unique(metadata$treatment)
+
+for(s1 in treatment){
+  for(s2 in treatment){
+    if(s1!=s2){
+      if(s1<s2){
+        print(c(s1,s2))
+        load(paste0(noiseq_dir, "/nsb_uniprot_",s1,"_vs_",s2,"_tmm.RData"))
+        DE.plot(tmm, graphic = "MD")
+        tmm_r <- as.data.frame(tmm@results)
+        ## plot with ggplot - 
+        tmp <- data.frame(log2FC = tmm_r[,5], log_c = log(tmm_r[,1]), log_s = log(tmm_r[,2]))
+        tmp$abs_mean_diff <- rowMeans(tmp[,c("log_c", "log_s")])
+        ggplot(tmp, aes(x = log2FC, y = abs_mean_diff)) +
+          geom_point() +
+          theme_bw() + theme(panel.grid = element_blank()) +
+          labs(x = expression("Log"["2"]*"FC"),
+            y = "Absolute value of difference of means",
+            title = paste("MD plot (uniprot):",s1,"vs",s2))
+        ggsave(paste0(noiseq_plots_dir, "/md_",s1,"_vs_",s2,"_uniprot.png"))
+        tmm_r
+      }}}}
+```
+
+```{r interactive volcano - uniprot}
+Sys.time()
+
+## test features from metadata
+treatment <- unique(metadata$treatment)
+
+## treatment by ko - noiseq
+for(s1 in treatment){
+  for(s2 in treatment){
+    if(s1!=s2){
+      if(s1<s2){
+        print(c(s1,s2))
+        tmm_r <- read.delim(paste0(noiseq_dir, "/nsb_uniprot_",s1,"_vs_",s2,"_tmm_filtered.txt"), 
+                            header=TRUE, row.names = 1, com = '', check.names = FALSE)
+        tmm_rm <- merge(tmm_r, uniprot_map, by.x = "id", by.y = "Entry", all.x = TRUE)
+        tmm_rm$EFFECTSIZE <- tmm_rm$log2FC
+        write.table(tmm_rm, paste0(noiseq_dir, "/nsb_uniprot_",s1,"_vs_",s2,"_tmm_filtered_annot.txt"), 
+                    sep = "\t", row.names = FALSE, quote = FALSE)
+        volc_obj <- volcanor(tmm_rm, p = "P", effect_size = "EFFECTSIZE", snp = "id", 
+                             gene = "EC.number", annotation1 = "Gene.Names", annotation2 = "Protein.names")
+        volc_plot <- volcanoly(volc_obj, effect_size_line = c(-2,2), effect_size_line_color = "orange",
+                               genomewideline = -log10(1e-2), genomewideline_color = "green", title = paste(s1, "vs", s2, "(uniprot)"))
+        # print(volc_plot)
+        htmlwidgets::saveWidget(volc_plot, paste0(noiseq_plots_dir, "/volcano_uniprot_nsb_",s1,"_vs_",s2,"_tmm_filtered.html"))
+      }}}}
+```
+
+save environment
+```{r save point}
+Sys.time()
+
+save.image()
+```
+
+### LEFT OFF HERE ###
 
 network analysis
 ```{r network prep}
