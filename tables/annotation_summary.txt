@@ -1,0 +1,7 @@
+Total # of genes: 1112068 
+Total # of isoforms: 1285845 
+Total # of proteins: 887078 
+Total # with blastx or blastp hit: 908669 
+Total # with no blast hit: 562245 
+Total # with both blastx and blastp hit: 566130 
+Total # with only blastp hit: 10866 
