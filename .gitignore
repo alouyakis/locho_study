@@ -62,3 +62,6 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# rdata objects
+*.RData
