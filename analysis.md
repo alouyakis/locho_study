@@ -43,6 +43,7 @@ export rrna_db="/data/databases/sortmerna/data/rRNA_databases"
 export dog="/data/databases/kneaddata_2023/dog/canFam4"
 export uniprot="/data/databases/uniprot"
 export pfam="/data/databases/pfam"
+export trna_db="/data/databases/tRNAdb"
 
 ## ignore undetermined - may need sudo
 sudo mv ${rawseqs}/Undetermined_S0_R1_001.fastq.gz ${rawseqs}/Undetermined_S0_R1_001.fastq.gz.ignore
@@ -492,6 +493,20 @@ for i in align_stats_F-50179*; do
 done
 sort overall_alignment_rates.csv > overall_alignment_rates.csv.tmp && mv overall_alignment_rates.csv.tmp overall_alignment_rates.csv
 cd ../../
+```
+
+search for tRNAs at Kiran's request during COM on 2025.04.29
+manually downloaded tRNA db from https://trna.ie.niigata-u.ac.jp/cgi-bin/trnadb/index.cgi#download
+```bash
+parallel -j 10 \
+  sortmerna --ref ${trna_db}/trna_sequence_cmp_arc.fasta \
+    --ref ${trna_db}/trna_sequence_cmp_bac.fasta \
+    --reads ${filtseqs}/{1}_trimmed-pair_R1.fastq.gz \
+    --reads ${filtseqs}/{1}_trimmed-pair_R2.fastq.gz \
+    --aligned ${sortmerna}/trna_{1} \
+    --paired_in --fastx --num_alignments 1 \
+    --workdir ${sortmerna}/trna_{1}_wd \
+    --threads 5 -m 5000 ::: $( basename -a ${rawseqs}/*R1*.fastq.gz | cut -f 1 -d '_')
 ```
 
 END
