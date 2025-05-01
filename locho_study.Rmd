@@ -491,7 +491,7 @@ vst <- varianceStabilizingTransformation(dds, blind = TRUE)
 # Plot PCA 
 pca <- plotPCA(vst, intgroup = "treatment")
 pca + theme_bw()
-ggsave(paste0(plots_dir, "/clustering/pca_rsem.png"))
+ggsave(paste0(plots_dir, "/clustering/pca_kegg_rsem.png"))
 
 # Extract the rlog matrix from the object
 vst_mat <- assay(vst)
@@ -500,7 +500,7 @@ vst_mat <- assay(vst)
 vst_cor <- cor(vst_mat)
 
 # Plot heatmap
-pheatmap(vst_cor, cellheight = 10, cellwidth = 10, filename = paste0(plots_dir, "/clustering/heatmap_rsem.png"))
+pheatmap(vst_cor, cellheight = 10, cellwidth = 10, filename = paste0(plots_dir, "/clustering/heatmap_kegg_rsem.png"))
 
 # Obtain rlog values for those significant genes
 # cluster_rlog <- rld_mat[clustering_sig_genes$gene, ]
@@ -536,8 +536,8 @@ ggplot(plot_data) +
   theme(plot.title = element_text(size = 16)) +
   facet_wrap(~title, ncol = 7)
 # ggsave("plots/cluster.pdf", height = 20, width = 14)
-ggplot2::ggsave(paste0(plots_dir, "/clustering/clusters_p0.05_rsem.png"), height = 10, width = 14, create.dir = TRUE)
-# ggplot2::ggsave(paste0(plots_dir, "/clustering/clusters_p1.0_rsem.png"), height = 8, width = 14, create.dir = TRUE)
+ggplot2::ggsave(paste0(plots_dir, "/clustering/clusters_kegg_p0.05_rsem.png"), height = 10, width = 14, create.dir = TRUE)
+# ggplot2::ggsave(paste0(plots_dir, "/clustering/clusters_kegg_p1.0_rsem.png"), height = 8, width = 14, create.dir = TRUE)
 
 # extract the group 3 genes
 # cluster_groups <- cluster_all$df
@@ -607,7 +607,7 @@ for(s1 in treatment){
       if(s1<s2){
         print(c(s1,s2))
         load(paste0(noiseq_dir, "/nsb_ko_",s1,"_vs_",s2,"_tmm.RData"))
-        DE.plot(tmm, graphic = "MD")
+        DE.plot(tmm, graphic = "MD", q = 0.95)
         tmm_r <- as.data.frame(tmm@results)
         ## plot with ggplot - 
         tmp <- data.frame(log2FC = tmm_r[,5], log_c = log(tmm_r[,1]), log_s = log(tmm_r[,2]))
@@ -705,7 +705,7 @@ for(s1 in treatment){
       if(s1<s2){
         print(c(s1,s2))
         load(paste0(noiseq_dir, "/nsb_uniprot_",s1,"_vs_",s2,"_tmm.RData"))
-        DE.plot(tmm, graphic = "MD")
+        DE.plot(tmm, graphic = "MD", q = 0.95)
         tmm_r <- as.data.frame(tmm@results)
         ## plot with ggplot - 
         tmp <- data.frame(log2FC = tmm_r[,5], log_c = log(tmm_r[,1]), log_s = log(tmm_r[,2]))
