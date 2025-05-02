@@ -2,9 +2,11 @@
 title: "locho_study"
 date: 2025.01.31
 author: 
- - Matt Jackson
- - Dayakar Badri
- - Artemis S. Louyakis
+ - Matt Jackson (study design and execution)
+ - Dayakar Badri (data generation)
+ - Nicole Green (data generation)
+ - Tobyn Bernazzani (analysis - abr method)
+ - Artemis S. Louyakis (analysis)
 output: html_notebook
 ---
 
@@ -136,8 +138,11 @@ kegg2entry %>%
 ## kegg org:gene id to ko id
 kegg2ko %>% 
   mutate(ko = gsub("ko:", "", ko)) -> kegg2ko
-## uniprot Entry.Name mapped to uniprot Entry
-# uniprot_map[,c("Entry", "Entry.Name")] %>% head()
+
+metacyc_map <- read.delim("annotations/uniprot_to_metacyc.txt", header = FALSE, col.names = c("Entry", "mapped", "metacyc")) %>%
+  mutate(Entry = str_replace(Entry, 'UniProt:', '')) %>%
+  filter(mapped == 1) %>%
+  select(Entry, metacyc)
 
 ## old version pulled from kegg website
 # khier <- read.delim("/data/databases/kegg/khier_ko.txt", header = FALSE) %>% 
@@ -610,14 +615,20 @@ for(s1 in treatment){
         DE.plot(tmm, graphic = "MD", q = 0.95)
         tmm_r <- as.data.frame(tmm@results)
         ## plot with ggplot - 
-        tmp <- data.frame(log2FC = tmm_r[,5], log_c = log(tmm_r[,1]), log_s = log(tmm_r[,2]))
+        tmp <- data.frame(log2FC = tmm_r[,5], log_c = log(tmm_r[,1]), log_s = log(tmm_r[,2]), prob = tmm_r[,4])
         tmp$abs_mean_diff <- rowMeans(tmp[,c("log_c", "log_s")])
+        tmp <- tmp %>% mutate(p = case_when(
+          prob >= 0.95 ~ "sig",
+          prob < 0.95 ~ "not sig"
+          ))
         ggplot(tmp, aes(x = log2FC, y = abs_mean_diff)) +
-          geom_point() +
+          geom_point(aes(color = p), alpha = 0.5) +
           theme_bw() + theme(panel.grid = element_blank()) +
           labs(x = expression("Log"["2"]*"FC"),
             y = "Absolute value of difference of means",
-            title = paste("MD plot (ko):",s1,"vs",s2))
+            title = paste("MD plot (ko):",s1,"vs",s2)) +
+          scale_color_manual(values=c("black", "red")) +
+          theme(legend.position = "none")
         ggsave(paste0(noiseq_plots_dir, "/md_",s1,"_vs_",s2,"_ko.png"))
         tmm_r
       }}}}
@@ -708,14 +719,20 @@ for(s1 in treatment){
         DE.plot(tmm, graphic = "MD", q = 0.95)
         tmm_r <- as.data.frame(tmm@results)
         ## plot with ggplot - 
-        tmp <- data.frame(log2FC = tmm_r[,5], log_c = log(tmm_r[,1]), log_s = log(tmm_r[,2]))
+        tmp <- data.frame(log2FC = tmm_r[,5], log_c = log(tmm_r[,1]), log_s = log(tmm_r[,2]), prob = tmm_r[,4])
         tmp$abs_mean_diff <- rowMeans(tmp[,c("log_c", "log_s")])
+        tmp <- tmp %>% mutate(p = case_when(
+          prob >= 0.95 ~ "sig",
+          prob < 0.95 ~ "not sig"
+          ))
         ggplot(tmp, aes(x = log2FC, y = abs_mean_diff)) +
-          geom_point() +
+          geom_point(aes(color = p), alpha = 0.5) +
           theme_bw() + theme(panel.grid = element_blank()) +
           labs(x = expression("Log"["2"]*"FC"),
             y = "Absolute value of difference of means",
-            title = paste("MD plot (uniprot):",s1,"vs",s2))
+            title = paste("MD plot (uniprot):",s1,"vs",s2)) +
+          scale_color_manual(values=c("black", "red")) +
+          theme(legend.position = "none")
         ggsave(paste0(noiseq_plots_dir, "/md_",s1,"_vs_",s2,"_uniprot.png"))
         tmm_r
       }}}}
@@ -788,8 +805,8 @@ physeq <- phyloseq(otu_table(tmm_ko, taxa_are_rows = TRUE),
                    sample_data(metadata %>% column_to_rownames(var = "sample_id")),
                    tax_table(as.matrix(khier_sub)))
 
-## graph all 
-ig <- make_network(physeq, type="taxa", distance="bray", max.dist = 0.8, keep.isolates=FALSE)
+## graph all - usually unusable
+# ig <- make_network(physeq, type="taxa", distance="bray", max.dist = 0.8, keep.isolates=FALSE)
 ```
 
 ```{r network plot}
@@ -844,6 +861,38 @@ ggsave(paste0(network_plots_dir, "/energy_level3_dist0.8_wlegend.png"))
 Sys.time()
 
 
+```
+
+antibiotic resistance filter
+```{r abr}
+Sys.time()
+
+## read in the brite to ko table and filter for antibiotic resistance
+ab_kos <- read.delim("/data/databases/kegg/ftp.pathway.jp/kegg/brite/links/brite_ko.list", 
+                     header = FALSE, col.names = c("brite", "ko")) %>%
+  filter(brite == "br:ko01504") %>%
+  select(ko) %>%
+  mutate(ko = gsub("ko:", "", ko))
+ab_kos
+
+## test features from metadata
+treatment <- unique(metadata$treatment)
+
+## filter de tables for abr genes and plot 
+for(s1 in treatment){
+  for(s2 in treatment){
+    if(s1!=s2){
+      if(s1<s2){
+        print(c(s1,s2))
+        tmm_r <- read.delim(paste0(noiseq_dir, "/nsb_ko_",s1,"_vs_",s2,"_tmm_filtered.txt"), 
+                            header=TRUE, row.names = 1, com = '', check.names = FALSE)
+        # tmm_r <- filter(tmm_r, id %in% ab_kos$ko) ## redundant
+        tmm_rm <- merge(tmm_r, khier, by.x = "id", by.y = "ko", all.x = TRUE) %>%
+          filter(level3 == "01504 Antimicrobial resistance genes [BR:ko01504]")
+        write.table(tmm_rm, paste0(tables_dir, "/abr/nsb_ko_",s1,"_vs_",s2,"_tmm_filtered_annot_abr.txt"),
+                    sep = "\t", row.names = FALSE, quote = FALSE)
+        ggplot()
+      }}}}
 ```
 
 
