@@ -873,7 +873,7 @@ ab_kos <- read.delim("/data/databases/kegg/ftp.pathway.jp/kegg/brite/links/brite
   filter(brite == "br:ko01504") %>%
   select(ko) %>%
   mutate(ko = gsub("ko:", "", ko))
-ab_kos
+# ab_kos
 
 ## test features from metadata
 treatment <- unique(metadata$treatment)
@@ -888,11 +888,33 @@ for(s1 in treatment){
                             header=TRUE, row.names = 1, com = '', check.names = FALSE)
         # tmm_r <- filter(tmm_r, id %in% ab_kos$ko) ## redundant
         tmm_rm <- merge(tmm_r, khier, by.x = "id", by.y = "ko", all.x = TRUE) %>%
-          filter(level3 == "01504 Antimicrobial resistance genes [BR:ko01504]")
-        write.table(tmm_rm, paste0(tables_dir, "/abr/nsb_ko_",s1,"_vs_",s2,"_tmm_filtered_annot_abr.txt"),
+          filter(level3 == "01504 Antimicrobial resistance genes [BR:ko01504]") %>%
+          mutate(color = ifelse(log2FC > 0 & prob >= 0.95, "red",
+                                ifelse(log2FC > 0 & prob < 0.95, "pink",
+                                       ifelse(log2FC < 0 & prob >= 0.95, "blue",
+                                              "lightblue")))) %>%
+          mutate(sig = ifelse(prob >= 0.95, "sig", "notsig")) %>%
+          mutate(label_hjust = ifelse(log2FC >= 0, 1, 0),
+                 label_nudge = ifelse(log2FC >= 0, -0.05, 0.05)) %>%
+          arrange(log2FC)
+        write.table(tmm_rm, paste0(noiseq_dir, "/nsb_ko_", s1, "_vs_", s2, "_tmm_filtered_annot_abr.txt"),
                     sep = "\t", row.names = FALSE, quote = FALSE)
-        ggplot()
+        p <- ggplot(tmm_rm, aes(x = log2FC, y = reorder(id, -log2FC), fill = sig)) +
+        geom_bar(stat = 'identity') +
+          theme_classic() +
+          labs(y = "KEGG Ortholog", x = expression("log"["2"]*" fold change"), 
+               title = paste0("← higher in ", s1, " | Antimicrobial resistance genes | higher in ", s2, " →")) +
+          theme(plot.title = element_text(hjust = 0.5)) +
+          scale_fill_manual(values = c("notsig" = "black", 
+                                      "sig" = "red")) +
+          theme(legend.position = "none") +
+          xlim(-round(max(abs(tmm_r$log2FC))), round(max(abs(tmm_r$log2FC)))) +
+          geom_text(aes(x = 0, label = ko_name, hjust = label_hjust), size = 2, nudge_x = tmm_rm$label_nudge)
+        print(p)
+        ggsave(paste0(noiseq_plots_dir, "/nsb_pathway_abrgenes_" , s1, "_vs_", s2, ".png"), 
+               dpi = 300, width = 10, height = 14, units = "in")
       }}}}
+
 ```
 
 
