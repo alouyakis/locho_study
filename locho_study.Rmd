@@ -42,6 +42,9 @@ library(KEGGREST)
 # library(ggplot2)
 library(ggpubr)
 
+## kegg pathway plots
+library(pathview)
+
 # library(EnhancedVolcano) ## load separately - conflict in list
 # library(beepr) ## alarm added to code chunks that may take longer than others
 ```
@@ -50,12 +53,14 @@ Create directories for input data and output files
 ```{r create dirs}
 Sys.time()
 
+home_dir <- getwd()
 data_dir <- "data"
 plots_dir <- "plots"
 tables_dir <- "tables"
 noiseq_dir <- "noiseq"
 noiseq_plots_dir <- "plots/noiseq"
 network_plots_dir <- "plots/network"
+kegg_maps_dir <- "plots/kegg_maps"
 
 if (!dir.exists(data_dir)) {
   dir.create(data_dir)
@@ -77,6 +82,9 @@ if (!dir.exists(noiseq_plots_dir)) {
 }
 if (!dir.exists(network_plots_dir)) {
   dir.create(network_plots_dir)
+}
+if (!dir.exists(kegg_maps_dir)) {
+  dir.create(kegg_maps_dir)
 }
 ```
 
@@ -914,6 +922,75 @@ for(s1 in treatment){
         ggsave(paste0(noiseq_plots_dir, "/nsb_pathway_abrgenes_" , s1, "_vs_", s2, ".png"), 
                dpi = 300, width = 10, height = 14, units = "in")
       }}}}
+
+```
+
+save environment
+```{r save point}
+Sys.time()
+
+save.image()
+```
+
+DE Barplots - all pathways
+```{r}
+Sys.time()
+
+
+```
+
+DE plotted onto KEGG pathway maps
+```{r kegg maps}
+Sys.time()
+
+## read in the brite to ko table and filter for antibiotic resistance
+pathway_list <- read.delim("/data/databases/kegg/ftp.pathway.jp/kegg/pathway/pathway.list", 
+                     header = FALSE, col.names = c("pwy_id", "pwy_name"), comment.char = "#", colClasses = "factor") 
+
+## make list of pathway ids
+pwy_ids <- as.vector(pathway_list$pwy_id)
+# pwy_ids <- c("00010", "00020")
+
+## test features from metadata
+treatment <- unique(metadata$treatment)
+
+## filter de tables for abr genes and plot 
+for(s1 in treatment){
+  for(s2 in treatment){
+    if(s1!=s2){
+      if(s1<s2){
+        print(c(s1,s2))
+        tmm_r <- read.delim(paste0(noiseq_dir, "/nsb_ko_",s1,"_vs_",s2,"_tmm_filtered.txt"), 
+                            header=TRUE, row.names = 1, com = '', check.names = FALSE) %>%
+          select(log2FC) %>%
+          as.matrix()
+        setwd(kegg_maps_dir)
+        for(i in 1:length(pwy_ids)){
+          tryCatch({
+            pv_out <- pathview(gene.data = tmm_r,
+                   pathway.id = pwy_ids[i],
+                   species = "ko",
+                   out.suffix = paste0(s1, "_vs_", s2),
+                   low = "#46ACC8",
+                   mid = "grey",
+                   high = "#E58601")
+          }, error=function(e){cat("ERROR : ", conditionMessage(e), "\n")})
+          filename <- paste0("ko", pwy_ids[i], ".", s1, "_vs_", s2, ".png")
+          print(filename)
+          if(file.size(filename) == 0){
+            file.remove(filename)
+          }
+          files <- list.files(pattern = ".nfs*", all.files = TRUE)
+          if(file.exists(files[1])) {
+           dev.off()
+         }
+        }
+        setwd(home_dir)
+      }
+    }
+  }
+}
+
 
 ```
 
