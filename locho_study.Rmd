@@ -926,10 +926,61 @@ for(s1 in treatment){
 ```
 
 save environment
-```{r save point}
+```{r save point2}
 Sys.time()
 
 save.image()
+```
+
+count number of genes present in pathway vs total genes in pathway
+```{r create pathway ko counts table}
+Sys.time()
+
+## import, filter, and reformat pathway-ko list
+ko_pwy_list <- read.delim("/data/databases/kegg/ftp.pathway.jp/kegg/pathway/ko/ko.list",
+                          header = FALSE, col.names = c("pwy_id", "ko")) 
+ko_pwy_list <- ko_pwy_list %>% 
+  unique() %>%
+  filter(str_detect(ko, "^ko:K")) %>%
+  mutate(ko = gsub("ko:", "", ko)) %>%
+  mutate(pwy_id = gsub("path:ko", "", pwy_id))
+
+## count totals
+ko_pwy_counts <- ko_pwy_list %>% 
+  dplyr::count(pwy_id, name = "total") 
+
+## test features from metadata
+treatment <- unique(metadata$treatment)
+
+for(s1 in treatment){
+  for(s2 in treatment){
+    if(s1!=s2){
+      if(s1<s2){
+        print(c(s1,s2))
+        tmm_r <- read.delim(paste0(noiseq_dir, "/nsb_ko_",s1,"_vs_",s2,"_tmm_filtered.txt"), 
+                            header=TRUE, row.names = 1, com = '', check.names = FALSE)
+        expressed_kos <- unique(tmm_r$id)
+        expressed_in_pathways <- ko_pwy_list[ko_pwy_list$ko %in% expressed_kos, ]
+        counts <- as.data.frame(table(expressed_in_pathways$pwy_id))
+        comp_name <- paste0(s1, "_vs_", s2)
+        colnames(counts) <- c("pwy_id", comp_name)
+        ko_pwy_counts <- merge(ko_pwy_counts, counts, by="pwy_id", all.x=TRUE)
+        ko_pwy_counts[[comp_name]][is.na(ko_pwy_counts[[comp_name]])] <- 0
+      }}}}
+
+## import and reformat pathway names
+pwy_names <- read.delim("/data/databases/kegg/ftp.pathway.jp/kegg/pathway/map_title.tab",
+                        header = FALSE, col.names = c("pwy_id", "pwy_name"), colClasses = "factor")
+pwy_names <- pwy_names %>%
+  unique() 
+
+## merge counts table with pathway names
+ko_pwy_counts <- merge(pwy_names, ko_pwy_counts, by = "pwy_id", all.y = TRUE)
+
+## write table
+write.table(ko_pwy_counts, paste0(tables_dir, "/pwy_ko_tx_counts.csv"), quote = FALSE, row.names = FALSE, 
+            sep = "\t")
+
 ```
 
 DE Barplots - all pathways
@@ -940,6 +991,8 @@ Sys.time()
 ```
 
 DE plotted onto KEGG pathway maps
+TODO: convert to use /data/databases/kegg/ftp.pathway.jp/kegg/xml/ files from ftp instead of downloading from kegg
+TODO: try /data/databases/kegg/ftp.pathway.jp/kegg/xml/kgml+/ for global maps that didn't work
 ```{r kegg maps}
 Sys.time()
 
@@ -966,18 +1019,20 @@ for(s1 in treatment){
           as.matrix()
         setwd(kegg_maps_dir)
         for(i in 1:length(pwy_ids)){
-          tryCatch({
-            pv_out <- pathview(gene.data = tmm_r,
+          filename <- paste0("ko", pwy_ids[i], ".", s1, "_vs_", s2, ".png")
+          if(!file.exists(filename)){
+            tryCatch({
+              pv_out <- pathview(gene.data = tmm_r,
                    pathway.id = pwy_ids[i],
                    species = "ko",
                    out.suffix = paste0(s1, "_vs_", s2),
                    low = "#46ACC8",
                    mid = "grey",
                    high = "#E58601")
-          }, error=function(e){cat("ERROR : ", conditionMessage(e), "\n")})
-          filename <- paste0("ko", pwy_ids[i], ".", s1, "_vs_", s2, ".png")
+            }, error=function(e){cat("ERROR : ", conditionMessage(e), "\n")})
+          }
           print(filename)
-          if(file.size(filename) == 0){
+          if(file.exists(filename) & file.size(filename) == 0){
             file.remove(filename)
           }
           files <- list.files(pattern = ".nfs*", all.files = TRUE)
@@ -991,9 +1046,9 @@ for(s1 in treatment){
   }
 }
 
-
+## 37 maps weren't created for any of the samples;
+## 2 additional maps weren't created for T1_LoCHO_PROT_vs_T2_LoCHO_FAT
 ```
-
 
 ## plotting quality not needed if running fastqc
 ```{r plot quality}
